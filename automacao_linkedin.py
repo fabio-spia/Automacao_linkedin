@@ -8,28 +8,28 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 
-# 🔹 Caminho do perfil do Chrome (Ajuste para o seu caso)
-PROFILE_PATH = r"C:\Users\55839\AppData\Local\Google\Chrome\User Data\Default"
+# 🔹 Caminho do perfil do Chrome (Use o seu caminho exato)
+PROFILE_PATH = r"C:\Users\55839\AppData\Local\Google\Chrome\User Data"
 
-# 🔹 Nome do perfil do Chrome que deseja usar
-PROFILE_NAME = "Default"  # Ajuste conforme necessário
+# 🔹 Nome do perfil específico
+PROFILE_NAME = "Default"  # No seu caso, é "Default"
 
-# 🔹 Configuração do Selenium com Chrome e perfil específico
+# 🔹 Configuração do Chrome para carregar o perfil correto
 chrome_options = Options()
-chrome_options.add_argument(f"user-data-dir={PROFILE_PATH}")
+chrome_options.add_argument(f"user-data-dir={PROFILE_PATH}")  # Caminho do User Data
 chrome_options.add_argument(f"--profile-directory={PROFILE_NAME}")  # Nome do perfil
-chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-chrome_options.add_argument("--start-maximized")
-chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0 Safari/537.36")
+chrome_options.add_argument("--disable-blink-features=AutomationControlled")  # Evita detecção
+chrome_options.add_argument("--start-maximized")  # Abre o navegador maximizado
+chrome_options.add_argument("--no-first-run --no-service-autorun --password-store=basic")  # Ignora mensagens do Chrome
 
-# 🔹 Inicializa o WebDriver com WebDriver Manager
+# 🔹 Inicializa o WebDriver corretamente
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
 try:
     # 1️⃣ Acessa a página de convites do LinkedIn
     driver.get("https://www.linkedin.com/mynetwork/invitation-manager/")
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-    time.sleep(5)  # Tempo extra para carregar
+    time.sleep(5)  # Aguarda o carregamento
 
     # 2️⃣ Loop para aceitar convites
     while True:
