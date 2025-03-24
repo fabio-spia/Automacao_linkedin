@@ -26,6 +26,7 @@ Automação completa para **aceitar convites** e **enviar mensagens personalizad
 ```sh
 pip install selenium webdriver-manager psutil
 
+
 ## 🔐 Configuração do Perfil do Chrome
 
 ###Acesse no Chrome:
