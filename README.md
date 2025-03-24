@@ -47,14 +47,14 @@ PROFILE_NAME = "Default"
 ```python main.py```
 
 ## 📄 Estrutura do Projeto
-Automacao_linkedin/
+```Automacao_linkedin/
 ├── main.py                # Executa o fluxo completo
 ├── accept_invites.py      # Aceita convites + salva CSV
 ├── send_messages.py       # Envia mensagens personalizadas
 ├── config.py              # Configurações do Chrome e WebDriver
 ├── profiles.csv           # Contatos aceitos (nome + link)
 ├── README.md              # Este arquivo
-
+```
 ## 💬 Personalização
 
 ### Edite a mensagem padrão no arquivo send_messages.py:
