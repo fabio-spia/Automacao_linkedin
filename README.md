@@ -1,59 +1,78 @@
-#Automação de Aceitação de Convites no LinkedIn
-# 🚀 Automação de Aceitação de Convites no LinkedIn com Selenium
+# 🤖 Automação LinkedIn com Selenium
 
-Este projeto é um script Python que automatiza o processo de aceitação de convites no LinkedIn, utilizando **Selenium** para interagir com o navegador Google Chrome.
+Automação completa para **aceitar convites** e **enviar mensagens personalizadas** no LinkedIn, utilizando **Python + Selenium**.
 
 ---
 
-## 🛠️ **Requisitos**
-Antes de rodar o script, você precisa instalar os seguintes pacotes:
+## 🚀 Funcionalidades
+
+- Aceita todos os convites pendentes automaticamente
+- Extrai o **nome e link** do perfil aceito para um arquivo `profiles.csv`
+- Envia uma **mensagem personalizada** automaticamente para cada contato aceito
+- Utiliza **seu perfil logado no Chrome**, sem precisar inserir login/senha
+- Simula comportamento humano com rolagem suave
+- Totalmente automático e robusto contra erros
+
+---
+
+## 🛠️ Requisitos
+
+- Python 3.9+
+- Google Chrome instalado
+- Perfil do Chrome com LinkedIn já logado
+
+### 📦 Instale os pacotes:
 
 ```sh
 pip install selenium webdriver-manager psutil
 
-Além disso, você precisa:
+## 🔐 Configuração do Perfil do Chrome
 
-Ter o Google Chrome instalado (versão atualizada recomendada).
-Ter o ChromeDriver compatível (o webdriver-manager cuida disso automaticamente).
-Saber o caminho do perfil do Chrome que está logado no LinkedIn.
+###Acesse no Chrome:
+chrome://version
+###Copie o Caminho do Perfil, ex:
+C:\Users\SeuUsuario\AppData\Local\Google\Chrome\User Data
+###Copie também o nome do diretório do perfil logado, ex:
+Default, Profile 1, etc.
+###No arquivo config.py, configure:
+PROFILE_PATH = "C:\\Users\\SeuUsuario\\AppData\\Local\\Google\\Chrome\\User Data"
+PROFILE_NAME = "Default"
 
-##Configuração do Perfil do Chrome
-Para que o Selenium use seu perfil logado no LinkedIn, você precisa definir o caminho correto do perfil do Chrome no código.
+##▶️ Como Executar
 
-###🔍 Como encontrar o caminho do perfil?
-Abra o Google Chrome e digite na barra de endereço:
-chrome://version/
-Copie o valor do "Caminho do Perfil", que será algo como:
-C:\Users\SEU_USUARIO\AppData\Local\Google\Chrome\User Data\Default
-No código, substitua PROFILE_PATH pelo caminho copiado.
-
-##Como Rodar o Script
-Feche TODOS os processos do Chrome antes de rodar o script.
-No Prompt de Comando (CMD), rode:
+1. Feche todos os processos do Chrome:
 taskkill /F /IM chrome.exe
-Execute o script Python:
-python linkedin_auto_accept.py
-O Selenium abrirá o Chrome, acessará a página de convites do LinkedIn e aceitará automaticamente todas as solicitações pendentes.
+2. Rode o script principal:
+python main.py
 
-##Possíveis Erros e Soluções
-❌ Erro: "session not created: Chrome failed to start: crashed."
-✅ Solução: Feche o Chrome antes de rodar o script.
+##📄 Estrutura do Projeto
+Automacao_linkedin/
+├── main.py                # Executa o fluxo completo
+├── accept_invites.py      # Aceita convites + salva CSV
+├── send_messages.py       # Envia mensagens personalizadas
+├── config.py              # Configurações do Chrome e WebDriver
+├── profiles.csv           # Contatos aceitos (nome + link)
+├── README.md              # Este arquivo
 
-❌ Erro: O Chrome abre no modo Visitante.
-✅ Solução: Verifique se o PROFILE_PATH está correto e se o Chrome não está rodando antes da execução.
+##💬 Personalização
 
-❌ Erro: chromedriver.exe não encontrado.
-✅ Solução: Atualize o webdriver-manager:
-pip install --upgrade webdriver-manager
+###Edite a mensagem padrão no arquivo send_messages.py:
+def generate_message(name):
+    return f"Olá {name}, é um prazer conectar com você!"
 
-##Personalização
-Se quiser mudar o tempo de espera entre as ações, altere os valores de time.sleep(5).
-Se quiser rodar o script periodicamente, use um agendador de tarefas no Windows ou cron jobs no Linux.
+##🧠 Possíveis Erros
+###Chrome failed to start: crashed
+Feche o Chrome com taskkill antes de rodar
+###Abre no modo Visitante
+Verifique PROFILE_PATH e PROFILE_NAME
+###chromedriver.exe not found
+Atualize com: pip install --upgrade webdriver-manager
+###ValueError: not enough values to unpack
+Alguma linha inválida no profiles.csv. Use o limpador embutido.
 
-##Conclusão
-Este script facilita a aceitação de convites no LinkedIn de forma automática, poupando tempo e evitando ações repetitivas.
-Se tiver dúvidas ou melhorias, sinta-se à vontade para contribuir! 🚀
-
-📝 Criado por: João Pedro
+##Criado por João Pedro
 
 
+
+
+```
