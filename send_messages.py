@@ -1,5 +1,7 @@
 import csv
+import random
 import time
+import pyautogui #precisa ser instalado
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -9,24 +11,65 @@ from selenium.webdriver.common.keys import Keys
 
 CSV_FILE = "profiles.csv"
 
+
 def generate_message(name):
     """Gera uma mensagem personalizada"""
-    return f"Olá {name}, é uma honra me conectar com você por aqui. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/palestra-ia"
+    
+    mensagens = [
+        f"Olá {name}, obrigado por se conectar! Será um prazer trocar ideias com você. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Oi {name}, é ótimo nos conectarmos aqui! Espero que possamos compartilhar bons insights. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Olá {name}, agradeço pela conexão! Fique à vontade para trocar experiências comigo. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Oi {name}, feliz por estarmos conectados! Vamos manter contato e compartilhar conhecimento. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Olá {name}, obrigado por se conectar! Espero que possamos colaborar e aprender juntos. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Oi {name}, que bom nos conectarmos! Conte comigo para boas conversas e troca de experiências. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Olá {name}, é uma honra estar na sua rede! Que possamos compartilhar boas oportunidades. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Oi {name}, agradeço a conexão! Espero que possamos interagir e crescer juntos profissionalmente. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Olá {name}, muito obrigado pela conexão! Será um prazer compartilhar ideias e conhecimentos. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Olá {name}, é uma honra me conectar com você por aqui. Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/",
+        f"Oi {name}, fico feliz com nossa conexão! Para conhecer mais sobre meu trabalho, acesse: fabionudge.com/"
+    ]
+    return random.choice(mensagens)
+
+def close_all_chat_windows():
+    """Encontra e fecha todas as janelas de conversa no LinkedIn usando PyAutoGUI."""
+    while True:
+        try:
+            # Tenta localizar o botão "fechar" na tela
+            regiao_chat = (0, 50, 1366, 718)  # (x, y, largura, altura)
+
+            close_button = pyautogui.locateCenterOnScreen("fechar.png", region=regiao_chat, confidence=0.6)
+            
+            if close_button:
+                pyautogui.click(close_button)  # Clica no botão de fechar
+                time.sleep(0,5)  # Pequena pausa para garantir o fechamento
+                print("achou botao")
+                
+            else:
+                print("Todas as janelas foram fechadas.")
+                break  # Sai do loop se não encontrar mais janelas abertas
+
+        except Exception as e:
+            print(f"Erro ao fechar janelas: {e}")
+            break  # Evita loops infinitos se algo der errado
 
 def send_messages():
     
     """Lê o CSV e envia mensagens para cada perfil"""
     driver = get_driver()
+    
     with open(CSV_FILE, "r", encoding="utf-8") as file:
         reader = csv.reader(file)
+        
         next(reader)  # Pula o cabeçalho
         
 
-
+        
         for row in reader:
-            if len(row) != 2:
+            if len(row) < 3:
                 continue
-            name, profile_link = row
+            
+            date, name, profile_link = row
+            
             first_name = name.split()[0]  # Apenas o primeiro nome
 
             print(f"📩 Enviando mensagem para {first_name}...")
@@ -40,6 +83,9 @@ def send_messages():
                 window_handles = driver.window_handles
                 driver.switch_to.window(window_handles[-1])
                
+                time.sleep(10)
+                close_all_chat_windows()
+                
                 # 🔥 Scroll suave para forçar o carregamento do botão
                 def scroll_smooth(driver, total=1000, step=100, delay=0.5):
                     for y in range(0, total, step):
@@ -70,7 +116,9 @@ def send_messages():
                 except (ElementClickInterceptedException, ElementNotInteractableException):
                     print("⚠ O botão estava bloqueado, tentando clique via JavaScript...")
                     driver.execute_script("arguments[0].click();", message_button)
-                
+            
+
+
                 # 🔹 Aguarda até que a caixa de mensagem esteja carregada
                 try:
                     message_box = WebDriverWait(driver, 10).until(
@@ -81,7 +129,9 @@ def send_messages():
                     driver.refresh()
                     time.sleep(5)
                     continue  # Pula para o próximo contato
-
+                
+                    
+                
                 # 🔹 Encontra a caixa de mensagem e escreve
                 message_box.send_keys(generate_message(first_name))
                 time.sleep(2)
@@ -110,6 +160,10 @@ def send_messages():
                         driver.execute_script("arguments[0].click();", send_button)
 
                     print("✅ Mensagem enviada!")
+
+                    
+
+
 
                 except TimeoutException:
                     print("❌ Botão 'Enviar' não encontrado ou não carregou.")

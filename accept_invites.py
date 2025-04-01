@@ -1,5 +1,6 @@
 import csv
 import time
+from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -15,9 +16,8 @@ def accept_invites():
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     time.sleep(5)
 
-    with open(CSV_FILE, "w", newline="", encoding="utf-8") as file:
+    with open(CSV_FILE, "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(["Nome", "Link do Perfil"])
 
         while True:
             # 🔹 Encontrar botões "Aceitar"
@@ -33,10 +33,11 @@ def accept_invites():
                     user_name_element = user_card.find_element(By.XPATH, ".//a[@data-test-app-aware-link]/strong")
                     user_name = user_name_element.text.strip()
                     user_link = user_card.find_element(By.XPATH, ".//a[@data-test-app-aware-link]").get_attribute("href")
+                    data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                     # 🔹 Salvar no CSV
-                    writer.writerow([user_name, user_link])
-                    print(f"✔ Convite aceito de {user_name} ({user_link})")
+                    writer.writerow([data_hora, user_name, user_link])
+                    print(f"✔ Convite aceito de {user_name} ({user_link}) em {data_hora}")
 
                     btn.click()
                     time.sleep(2)

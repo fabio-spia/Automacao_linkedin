@@ -1,4 +1,4 @@
-from selenium import webdriver
+from selenium import webdriver #precisa ser instalado
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
@@ -6,7 +6,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 # 🔹 Caminho do perfil do Chrome
 PROFILE_PATH = r"C:\Users\55839\AppData\Local\Google\Chrome\User Data"
-PROFILE_NAME = "Profile 16"
+PROFILE_NAME = "Profile 1"
 
 def get_driver():
     """Configura e retorna o driver do Selenium"""
