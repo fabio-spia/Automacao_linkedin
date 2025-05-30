@@ -33,13 +33,13 @@ pip install chromedriver_autoinstaller
 
 1. Siga as instruções contidas no arquivo conection_sheet.py 
 2. Crie suas variaveis de ambiente no arquivo .env
-3. Rode o script principal:
-python main.py
+3. Rode o script principal: main.py
 4. Na primeira vez será necessario fazer login.
 5. Após inserir as credenciais, vá ate o terminal e pressione "enter"
-OBS: O Processo de login não deverá ser feito sempre, apenas quando os cookies expirarem.
+### OBS: O Processo de login não deverá ser feito sempre, apenas quando os cookies expirarem.
 
 ## 📄 Estrutura do Projeto
+```sh
 Automacao_linkedin/
 ├── src                                        # Codigos-fonte
     ├── main.py                                # Executa o fluxo completo
@@ -59,7 +59,7 @@ Automacao_linkedin/
     ├── cookie_file_path.json                  # Cookies do perfil do linkedin
     ├── profiles.csv                           # Arquivo para armazenar perfis
     ├── prompt.txt                             # Prompt para gerar mensagens
-
+```
 
 
 ## 💬 Personalização
