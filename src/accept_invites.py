@@ -1,21 +1,52 @@
+# TENHA O SELENIUM E WEBDRIVER INSTALADO
+from save_cookies import save_cookies #Importar cookies do perfil desejado
 import csv
 import time
+import json
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from config import get_driver
+from config import get_driver 
 
-# 🔹 Caminho do arquivo CSV
-CSV_FILE = "profiles.csv"
+# 🔹 Caminho do arquivo que será salvo os perfis
+CSV_FILE = "data/profiles.csv"
 
+# Aceita convites e salva no CSV
 def accept_invites():
-    """Aceita convites e salva nome + link no CSV"""
-    driver = get_driver()
+    
+    driver = get_driver()   # Abre o browser
+    driver.get("https://www.linkedin.com")  # Abre LinkedIn
+
+    # Carrega cookies do JSON
+    cookie_file_path = "data/cookie_file_path.json"
+    with open(cookie_file_path, "r", encoding="utf-8") as f:
+        cookies = json.load(f)
+
+    for cookie in cookies:
+        if "sameSite" in cookie:
+            if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
+                del cookie["sameSite"]
+        driver.add_cookie(cookie)
+
     driver.get("https://www.linkedin.com/mynetwork/invitation-manager/")
+    
+    # ✅ Verifica se foi redirecionado para login (cookies expirados)
+    if "login" in driver.current_url:
+        print("🔒 Sessão expirada. Faça login para atualizar cookies...")
+        driver.quit()
+
+        # 🧠 Abre o navegador e pede login manual
+        save_cookies()
+
+        print("✅ Cookies atualizados. Recomeçando a automação...")
+        accept_invites()  # ⬅ Chama a si mesma novamente com cookies válidos
+        return  # Importante: evita duplicação de execução abaixo
+    
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     time.sleep(5)
 
+    # Acessar o CSV
     with open(CSV_FILE, "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
 
@@ -29,19 +60,20 @@ def accept_invites():
 
             for btn in accept_buttons:
                 try:
+                    # Capturar dados
                     user_card = btn.find_element(By.XPATH, "./ancestor::li")
                     user_name_element = user_card.find_element(By.XPATH, ".//a[@data-test-app-aware-link]/strong")
                     user_name = user_name_element.text.strip()
                     user_link = user_card.find_element(By.XPATH, ".//a[@data-test-app-aware-link]").get_attribute("href")
                     data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+                   
                     # 🔹 Salvar no CSV
+                    btn.click() # Aceita convite
+                    time.sleep(2)
                     writer.writerow([data_hora, user_name, user_link])
                     print(f"✔ Convite aceito de {user_name} ({user_link}) em {data_hora}")
-
-                    btn.click()
-                    time.sleep(2)
-
+                       
                 except Exception as e:
                     print(f"⚠ Erro ao aceitar convite: {e}")
 
