@@ -29,7 +29,7 @@
 #    → Vá até sua planilha no Google Sheets.
 #    → Clique em "Compartilhar" → cole o e-mail da Service Account → envie.
 
-
+import csv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv

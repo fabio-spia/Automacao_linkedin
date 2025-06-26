@@ -13,19 +13,21 @@ from bot_linkedin import gerar_resposta
 #Constantes
 CSV_FILE = "data/profiles.csv" # Arquivo com perfis
 COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
-SEARCH_IMAGE = "assets/search_mesage.png" #Print do campo de buscar mensagens
 CLOSE_IMAGE = "assets/fechar.png" # Print do botão de fechar 
 REGIAO_CHAT = (0, 50, 1366, 718) # Região da tela para buscar chats abertos
+PROMPT = "data/prompt_message.txt" # Prompt das mensagens
 
 # Encontra e fecha todas as janelas de conversa no LinkedIn usando PyAutoGUI
 def close_all_chat_windows():
     while True:
         close_button = None
         try:
-            # Tenta localizar o botão "fechar" na tela
+            #Tenta localizar o botão "fechar" na tela
             close_button = pyautogui.locateCenterOnScreen(CLOSE_IMAGE, region=REGIAO_CHAT, confidence=0.8)
-            
+            #close_button = WebDriverWait().until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@class,'artdeco-button--tertiary ember-view')]")))
+
             if close_button:
+                #close_button.click()
                 pyautogui.click(close_button)  # Clica no botão de fechar
                 time.sleep(0.5)  # Pequena pausa para garantir o fechamento
     
@@ -39,7 +41,7 @@ def close_all_chat_windows():
                 print(f"Erro ao fechar janelas: {e}")
             break  # Evita loops infinitos se algo der errado
 
-def send_messages():  
+def send_messages(): 
     driver = get_driver() # Abre browser
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
 
@@ -52,6 +54,19 @@ def send_messages():
             if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
                 del cookie["sameSite"]
         driver.add_cookie(cookie)
+
+    # ✅ Verifica se foi redirecionado para login (cookies expirados)
+    if "login" in driver.current_url:
+        print("🔒 Sessão expirada. Faça login para atualizar cookies...")
+        driver.quit()
+
+        # 🧠 Abre o navegador e pede login manual
+        from save_cookies import save_cookies #Importar cookies do perfil desejado 
+        save_cookies()
+
+        print("✅ Cookies atualizados. Recomeçando a automação...")
+        send_messages()  # ⬅ Chama a si mesma novamente com cookies válidos
+        return  # Importante: evita duplicação de execução abaixo
 
     # Lê o CSV e envia mensagens para cada perfil
     with open(CSV_FILE, "r", encoding="utf-8") as file:
@@ -82,10 +97,10 @@ def send_messages():
                 
                 #Buscar nome
                 
-                text_field = pyautogui.locateCenterOnScreen(SEARCH_IMAGE, confidence=0.8)
-                pyautogui.click(text_field)
-                pyautogui.write(name, interval=0.05)
-                pyautogui.press('enter')
+                text_field = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "search-conversations")))
+                text_field.click()
+                text_field.send_keys(name)
+                text_field.send_keys(Keys.ENTER)
                 try:
                     # Espera o UL com as conversas aparecer
                     WebDriverWait(driver, 10).until(
@@ -115,7 +130,7 @@ def send_messages():
                             ]
                             mensagem_concatenada = first_name + ": " + " ".join(mensagens)
                             print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
-                            resposta = gerar_resposta(mensagem_concatenada) # Gerando resposta
+                            resposta = gerar_resposta(mensagem_concatenada, PROMPT) # Gerando resposta
                             print(f"🤖 Resposta gerada: {resposta}")
                             time.sleep(10)
 
@@ -127,7 +142,7 @@ def send_messages():
                     else:
                         # Mandando mensagem diretamente no perfil
                         print("Nenhuma conversa visível e clicável foi encontrada.")
-                        resposta = gerar_resposta(first_name)
+                        resposta = gerar_resposta(first_name, PROMPT)
                         driver.get(profile_link)
                         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
                         time.sleep(2)
@@ -154,7 +169,6 @@ def send_messages():
                                 EC.element_to_be_clickable((By.XPATH, 
                                                             "//button[contains(@aria-label, 'Enviar mensagem') or contains(., 'Enviar mensagem')]"))
                             )
-                            print("Botão encontrado")
                         except TimeoutException:
                             print(f"❌ Botão 'Enviar mensagem' não encontrado para {first_name}. Pulando...")
                             continue  # Pula para o próximo contato

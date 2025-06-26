@@ -1,5 +1,4 @@
 # TENHA O SELENIUM E WEBDRIVER INSTALADO
-from save_cookies import save_cookies #Importar cookies do perfil desejado
 import csv
 import time
 import json
@@ -37,6 +36,7 @@ def accept_invites():
         driver.quit()
 
         # 🧠 Abre o navegador e pede login manual
+        from save_cookies import save_cookies #Importar cookies do perfil desejado
         save_cookies()
 
         print("✅ Cookies atualizados. Recomeçando a automação...")
@@ -61,10 +61,10 @@ def accept_invites():
             for btn in accept_buttons:
                 try:
                     # Capturar dados
-                    user_card = btn.find_element(By.XPATH, "./ancestor::li")
-                    user_name_element = user_card.find_element(By.XPATH, ".//a[@data-test-app-aware-link]/strong")
+                    user_card = btn.find_element(By.XPATH, "./ancestor::*[@role='listitem']")
+                    user_name_element = user_card.find_element(By.XPATH, ".//a[contains(@href, '/in/')]/strong")
                     user_name = user_name_element.text.strip()
-                    user_link = user_card.find_element(By.XPATH, ".//a[@data-test-app-aware-link]").get_attribute("href")
+                    user_link = user_card.find_element(By.XPATH, ".//a[contains(@href, '/in/')]").get_attribute("href")
                     data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                    
