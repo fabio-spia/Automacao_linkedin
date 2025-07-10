@@ -1,21 +1,10 @@
 import json
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import chromedriver_autoinstaller
-
-# Instala automaticamente o driver compatível com seu Chrome
-chromedriver_autoinstaller.install()
+from config import get_driver 
 
 COOKIE_FILE = "data/cookie_file_path.json"
 
-def save_cookies():
-    options = Options()
-    options.add_argument("--start-maximized")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
-
-    driver = webdriver.Chrome(options=options)
+def save_cookies(driver):
+    
     driver.get("https://www.linkedin.com/")
 
     print("🔐 Faça o login manualmente no LinkedIn.")
@@ -30,4 +19,5 @@ def save_cookies():
     driver.quit()
 
 if __name__ == "__main__":
-    save_cookies()
+    driver = get_driver()
+    save_cookies(driver)

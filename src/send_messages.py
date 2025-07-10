@@ -108,9 +108,14 @@ def send_messages():
                     )
 
                     # Encontra o primeiro link de conversa visível
+                    try:
+                        WebDriverWait(driver, 15).until(
+                            EC.visibility_of_element_located((By.CSS_SELECTOR, "div.msg-conversation-listitem__link"))
+                        )
+                    except TimeoutException:
+                        print("Elemento de conversa não apareceu dentro do tempo limite.")
                     convo_links = driver.find_elements(By.CSS_SELECTOR, "div.msg-conversation-listitem__link")
-                    
-                    for link in convo_links:
+                    for link in convo_links:   
                         if link.is_displayed():
                             WebDriverWait(driver, 10).until(EC.element_to_be_clickable(link))
                             link.click() # Clicando no chat especifico

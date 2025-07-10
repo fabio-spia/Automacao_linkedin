@@ -33,11 +33,10 @@ def accept_invites():
     # ✅ Verifica se foi redirecionado para login (cookies expirados)
     if "login" in driver.current_url:
         print("🔒 Sessão expirada. Faça login para atualizar cookies...")
-        driver.quit()
 
         # 🧠 Abre o navegador e pede login manual
         from save_cookies import save_cookies #Importar cookies do perfil desejado
-        save_cookies()
+        save_cookies(driver)
 
         print("✅ Cookies atualizados. Recomeçando a automação...")
         accept_invites()  # ⬅ Chama a si mesma novamente com cookies válidos
