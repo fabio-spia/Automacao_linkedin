@@ -65,7 +65,7 @@ def gerar_resposta(mensagem_usuario, caminho_prompt, url_imagem=None, contexto=N
 
 # Execução
 if __name__ == "__main__":
-    prompt = "data/prompt_comment.txt"
+    prompt = "data/prompt_message.txt"
     csv_treinamento = "data/dataset_comment.csv"
     print("Analisador de Texto e Imagem com GPT-4o")
     while True:
@@ -73,6 +73,6 @@ if __name__ == "__main__":
         if user_input.lower() == 'sair':
             break
         url_imagem = input("Cole o link da imagem (ou pressione ENTER para não usar imagem): ").strip()
-        resposta = gerar_resposta(user_input, prompt, url_imagem if url_imagem else None, csv_treinamento)
+        resposta = gerar_resposta(user_input, prompt)
         print("\nResposta:\n", resposta)
         print("-" * 50)

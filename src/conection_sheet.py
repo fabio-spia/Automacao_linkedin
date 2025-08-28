@@ -37,37 +37,37 @@ import os
 load_dotenv("credentials/.env")
 
 # Autenticação
-def autenticar_google_sheets(json_keyfile, sheet_name):
+def autenticar_google_sheets(json_keyfile, sheet_name, aba_name):
     scope = ["https://spreadsheets.google.com/feeds",
              "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(json_keyfile, scope)
     client = gspread.authorize(creds)
-    sheet = client.open(sheet_name).sheet1
+    sheet = client.open(sheet_name).worksheet(aba_name)
     return sheet
 
 # Função para adicionar um novo registro
-def adicionar_registro():
+def adicionar_registro(csv_file,aba_name):
     json_keyfile = "credentials/google_sheets_credentials.json"
     nome_planilha = os.getenv("NAME_SHEET") # Preencha de acordo com sua variavel no arquivo .env
-    CSV_FILE = "data/profiles.csv"
-    sheet = autenticar_google_sheets(json_keyfile, nome_planilha)
+    sheet = autenticar_google_sheets(json_keyfile, nome_planilha, aba_name)
     
-    with open(CSV_FILE, "r", encoding="utf-8") as file:
+    with open(csv_file, "r", encoding="utf-8") as file:
         reader = csv.reader(file)
         
         next(reader)  # Pula o cabeçalho    
-
+        cont = 0
         for row in reader:
-            if len(row) < 3:
+            if not row:  # ignora linhas vazias
                 continue
-            
-            date, name, profile_link = row
-            nova_linha = [date, name, profile_link]
-            sheet.append_row(nova_linha)
-            print(name+" adicionado.")     
+            cont += 1
+            sheet.append_row(row)
+            print(f"Linha {cont} adicionada")   
 
 if __name__ == "__main__":
-    adicionar_registro()
+    print("\nSalvando perfis...")
+    adicionar_registro("data/profiles.csv","AutoAccept")
+    print("Salvando posts...")
+    adicionar_registro("data/posts.csv","AutoComment")
 
            
                   

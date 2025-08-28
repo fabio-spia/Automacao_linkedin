@@ -1,4 +1,5 @@
 import csv
+import random
 import time
 import json
 import pyautogui #precisa ser instalado
@@ -9,6 +10,7 @@ from selenium.common.exceptions import TimeoutException, ElementClickIntercepted
 from config import get_driver
 from selenium.webdriver.common.keys import Keys
 from bot_linkedin import gerar_resposta
+
 
 #Constantes
 CSV_FILE = "data/profiles.csv" # Arquivo com perfis
@@ -41,32 +43,7 @@ def close_all_chat_windows():
                 print(f"Erro ao fechar janelas: {e}")
             break  # Evita loops infinitos se algo der errado
 
-def send_messages(): 
-    driver = get_driver() # Abre browser
-    driver.get("https://www.linkedin.com")  # Abre LinkedIn
-
-    # Carrega cookies do JSON
-    with open(COOKIE_FILE_PATH, "r", encoding="utf-8") as f:
-        cookies = json.load(f)
-
-    for cookie in cookies:
-        if "sameSite" in cookie:
-            if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
-                del cookie["sameSite"]
-        driver.add_cookie(cookie)
-
-    # ✅ Verifica se foi redirecionado para login (cookies expirados)
-    if "login" in driver.current_url:
-        print("🔒 Sessão expirada. Faça login para atualizar cookies...")
-        driver.quit()
-
-        # 🧠 Abre o navegador e pede login manual
-        from save_cookies import save_cookies #Importar cookies do perfil desejado 
-        save_cookies()
-
-        print("✅ Cookies atualizados. Recomeçando a automação...")
-        send_messages()  # ⬅ Chama a si mesma novamente com cookies válidos
-        return  # Importante: evita duplicação de execução abaixo
+def send_messages(driver): 
 
     # Lê o CSV e envia mensagens para cada perfil
     with open(CSV_FILE, "r", encoding="utf-8") as file:
@@ -75,10 +52,10 @@ def send_messages():
         next(reader)  # Pula o cabeçalho
           
         for row in reader:
-            if len(row) < 3:
+            if len(row) < 4:
                 continue
             
-            date, name, profile_link = row
+            date, name, profile_link, title = row
             
             
             first_name = name.split()[0]  # Apenas o primeiro nome
@@ -115,15 +92,15 @@ def send_messages():
                     except TimeoutException:
                         print("Elemento de conversa não apareceu dentro do tempo limite.")
                     convo_links = driver.find_elements(By.CSS_SELECTOR, "div.msg-conversation-listitem__link")
+                    clicou = False
                     for link in convo_links:   
-                        if link.is_displayed():
+                        if link.is_displayed() and name in link.text:
                             WebDriverWait(driver, 10).until(EC.element_to_be_clickable(link))
                             link.click() # Clicando no chat especifico
-                            time.sleep(2)
+                            time.sleep(random.randint(2, 5))
                             clicou = True                            
                             break
-                    if len(convo_links)==0:
-                        clicou = False
+    
                     if clicou:
                         message_box = WebDriverWait(driver, 10).until(
                             EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'msg-form__contenteditable')]"))
@@ -137,7 +114,7 @@ def send_messages():
                             print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
                             resposta = gerar_resposta(mensagem_concatenada, PROMPT) # Gerando resposta
                             print(f"🤖 Resposta gerada: {resposta}")
-                            time.sleep(10)
+                            time.sleep(random.randint(10, 20))
 
                         except Exception as e:
                             print(f"⚠ Erro ao verificar mensagens recebidas: {e}")
@@ -147,16 +124,25 @@ def send_messages():
                     else:
                         # Mandando mensagem diretamente no perfil
                         print("Nenhuma conversa visível e clicável foi encontrada.")
-                        resposta = gerar_resposta(first_name, PROMPT)
+                        
                         driver.get(profile_link)
                         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                        time.sleep(2)
+                        time.sleep(random.randint(2, 5))
 
                         # 🔹 Verifica todas as janelas abertas e muda para a mais recente
                         window_handles = driver.window_handles
                         driver.switch_to.window(window_handles[-1])
-                    
-                        time.sleep(10)
+                        
+                        # Verificar nacionalidade
+                        local = WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'text-body-small inline')]"))
+                        )
+                        local = local.text           
+                        first_name = first_name+" "+local
+                        
+                        resposta = gerar_resposta(first_name, PROMPT)
+                        
+                        time.sleep(random.randint(10, 20))
                         close_all_chat_windows()
                         
                         # 🔥 Scroll suave para forçar o carregamento do botão
@@ -165,7 +151,7 @@ def send_messages():
                                 driver.execute_script(f"window.scrollTo(0, {y});")
                                 time.sleep(delay)
                         scroll_smooth(driver)
-                        time.sleep(2)
+                        time.sleep(random.randint(2, 5))
                         
 
                     # 🔹 Tenta encontrar o botão "Enviar mensagem"
@@ -197,7 +183,7 @@ def send_messages():
                         except TimeoutException:
                             print(f"⚠ O chat para {first_name} não carregou. Recarregando a página e tentando novamente...")
                             driver.refresh()
-                            time.sleep(5)
+                            time.sleep(random.randint(5, 10))
                             continue  # Pula para o próximo contato
                 except Exception as e:
                     print(f"Ocorreu um erro: {e}")
@@ -205,7 +191,7 @@ def send_messages():
                 # Escreve a resposta no campo de texto
                 message_box.send_keys(resposta)
 
-                time.sleep(5)
+                time.sleep(random.randint(5, 10))
 
                 try:
 
@@ -216,7 +202,7 @@ def send_messages():
 
                     # 🔹 Rola a tela até o botão "Enviar"
                     driver.execute_script("arguments[0].scrollIntoView(true);", send_button)
-                    time.sleep(2)
+                    time.sleep(random.randint(2, 5))
 
                     # 🔹 Verifica se o botão está realmente interativo antes de clicar
                     WebDriverWait(driver, 5).until(
@@ -236,14 +222,40 @@ def send_messages():
                     print("❌ Botão 'Enviar' não encontrado ou não carregou.")
                 except Exception as e:
                     print(f"⚠ Erro desconhecido: {e}")
-                time.sleep(3)
+                time.sleep(random.randint(3, 5))
 
                 print(f"✅ Mensagem enviada para {first_name}")
 
             except Exception as e:
                 print(f"⚠ Erro ao enviar mensagem para {first_name}: {e}")
 
-    driver.quit()
+    
 
 if __name__ == "__main__":
-    send_messages()
+    driver = get_driver()   # Abre o browser
+    driver.get("https://www.linkedin.com")  # Abre LinkedIn
+
+    # Carrega cookies do JSON
+    with open(COOKIE_FILE_PATH, "r", encoding="utf-8") as f:
+        cookies = json.load(f)
+
+    for cookie in cookies:
+        if "sameSite" in cookie:
+            if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
+                del cookie["sameSite"]
+        driver.add_cookie(cookie)
+
+    # ✅ Verifica se foi redirecionado para login (cookies expirados)
+    if "login" in driver.current_url:
+        print("🔒 Sessão expirada. Faça login para atualizar cookies...")
+        driver.quit()
+
+        # 🧠 Abre o navegador e pede login manual
+        from save_cookies import save_cookies #Importar cookies do perfil desejado 
+        save_cookies()
+
+        print("✅ Cookies atualizados. Recomeçando a automação...")
+        send_messages()  # ⬅ Chama a si mesma novamente com cookies válidos
+
+    send_messages(driver)
+    driver.quit()

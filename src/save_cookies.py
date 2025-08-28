@@ -1,7 +1,7 @@
 import json
 from config import get_driver 
 
-COOKIE_FILE = "data/cookie_file_path.json"
+COOKIE_FILE = "data/cookies_teste.json"
 
 def save_cookies(driver):
     
