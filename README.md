@@ -1,4 +1,4 @@
-# Automacao LinkedIn com Selenium
+# Automacao LinkedIn 
 
 Projeto em Python para automatizar tarefas no LinkedIn usando Selenium (e PyAutoGUI em alguns passos).
 O fluxo principal pode:
@@ -97,7 +97,7 @@ data/erro.csv
 nome_busca, motivo_erro (usado no fluxo de conexoes por busca)
 
 ## Estrutura do projeto
-
+```sh
 Automacao_linkedin/
   src/
     main.py
@@ -142,10 +142,10 @@ Automacao_linkedin/
       prompt_choose_theme.txt
       prompt_legend.txt
       topics_posted.csv
-
+```
 ## Personalização
 
 ### Edite os prompts para perssonalizar a mensagem enviada para o usuario
 
 
-## Criado por João Pedro
+## Criado por João Pedro na NCD
