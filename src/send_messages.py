@@ -3,6 +3,7 @@ import random
 import time
 import json
 import pyautogui #precisa ser instalado
+import pyperclip
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -15,9 +16,20 @@ from bot_linkedin import gerar_resposta
 #Constantes
 CSV_FILE = "data/profiles.csv" # Arquivo com perfis
 COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
-CLOSE_IMAGE = "assets/fechar.png" # Print do botão de fechar 
+CLOSE_IMAGE1 = "assets/fechar1.png" # Print do botão de fechar
+CLOSE_IMAGE2 = "assets/fechar2.png" # Print do botão de fechar 
 REGIAO_CHAT = (0, 50, 1366, 718) # Região da tela para buscar chats abertos
 PROMPT = "data/prompt_message.txt" # Prompt das mensagens
+
+#Função para escrever de maneira automatizada
+def humanized_writing(text):
+    for char in text:
+        if char == " ":
+            pyautogui.press("space")
+        else:
+            pyperclip.copy(char)
+            pyautogui.hotkey("ctrl", "v")
+        time.sleep(random.uniform(0.1,0.5))
 
 # Encontra e fecha todas as janelas de conversa no LinkedIn usando PyAutoGUI
 def close_all_chat_windows():
@@ -25,19 +37,22 @@ def close_all_chat_windows():
         close_button = None
         try:
             #Tenta localizar o botão "fechar" na tela
-            close_button = pyautogui.locateCenterOnScreen(CLOSE_IMAGE, region=REGIAO_CHAT, confidence=0.8)
-            #close_button = WebDriverWait().until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@class,'artdeco-button--tertiary ember-view')]")))
-
+            
+            close_button = pyautogui.locateCenterOnScreen(CLOSE_IMAGE1, region=REGIAO_CHAT, confidence=0.8)
+            
             if close_button:
-                #close_button.click()
                 pyautogui.click(close_button)  # Clica no botão de fechar
                 time.sleep(0.5)  # Pequena pausa para garantir o fechamento
-    
-                
-            else:
+                     
+            close_button = pyautogui.locateCenterOnScreen(CLOSE_IMAGE2, region=REGIAO_CHAT, confidence=0.8)
+        
+            if close_button:
+                pyautogui.click(close_button)  # Clica no botão de fechar
+                time.sleep(0.5)  # Pequena pausa para garantir o fechamento
+            if not close_button:
                 print("Todas as janelas foram fechadas.")
                 break  # Sai do loop se não encontrar mais janelas abertas
-
+            
         except Exception as e:
             if close_button != None:
                 print(f"Erro ao fechar janelas: {e}")
@@ -64,133 +79,87 @@ def send_messages(driver):
             print(f"📩 Enviando mensagem para {first_name}...")
 
             try:
-                driver.get("https://tinyurl.com/5n74kwt5") # Abre pagina de busca do linkedin
+                # Abrindo perfil
+                driver.get(profile_link)
                 WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                time.sleep(5)
-                
+                time.sleep(random.randint(2, 5))
+
                 # 🔹 Verifica todas as janelas abertas e muda para a mais recente
                 window_handles = driver.window_handles
                 driver.switch_to.window(window_handles[-1])
                 
-                #Buscar nome
+                # Verificar nacionalidade
                 
-                text_field = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "search-conversations")))
-                text_field.click()
-                text_field.send_keys(name)
-                text_field.send_keys(Keys.ENTER)
+                
+                time.sleep(random.randint(10, 20))
+                close_all_chat_windows()
+                
+                # 🔥 Scroll suave para forçar o carregamento do botão
+                def scroll_smooth(driver, total=1000, step=100, delay=0.5):
+                    for y in range(0, total, step):
+                        driver.execute_script(f"window.scrollTo(0, {y});")
+                        time.sleep(delay)
+                scroll_smooth(driver)
+                time.sleep(random.randint(2, 5))
+                
+
+                # 🔹 Tenta encontrar o botão "Enviar mensagem"
                 try:
-                    # Espera o UL com as conversas aparecer
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "ul.msg-conversations-container__conversations-list"))
+                    message_button = WebDriverWait(driver, 20).until(
+                        EC.element_to_be_clickable((By.XPATH, 
+                                                    "//button[contains(@aria-label, 'Enviar mensagem') or contains(., 'Enviar mensagem')]"))
                     )
+                except TimeoutException:
+                    print(f"❌ Botão 'Enviar mensagem' não encontrado para {first_name}. Pulando...")
+                    continue  # Pula para o próximo contato
 
-                    # Encontra o primeiro link de conversa visível
-                    try:
-                        WebDriverWait(driver, 15).until(
-                            EC.visibility_of_element_located((By.CSS_SELECTOR, "div.msg-conversation-listitem__link"))
-                        )
-                    except TimeoutException:
-                        print("Elemento de conversa não apareceu dentro do tempo limite.")
-                    convo_links = driver.find_elements(By.CSS_SELECTOR, "div.msg-conversation-listitem__link")
-                    clicou = False
-                    for link in convo_links:   
-                        if link.is_displayed() and name in link.text:
-                            WebDriverWait(driver, 10).until(EC.element_to_be_clickable(link))
-                            link.click() # Clicando no chat especifico
-                            time.sleep(random.randint(2, 5))
-                            clicou = True                            
-                            break
-    
-                    if clicou:
-                        message_box = WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'msg-form__contenteditable')]"))
-                        )
-                        try:
-                            # Extraindo mensagens recebidas 
-                            mensagens = [
-                                el.text for el in driver.find_elements(By.CSS_SELECTOR, "li.msg-s-message-list__event p.msg-s-event-listitem__body")
-                            ]
-                            mensagem_concatenada = first_name + ": " + " ".join(mensagens)
-                            print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
-                            resposta = gerar_resposta(mensagem_concatenada, PROMPT) # Gerando resposta
-                            print(f"🤖 Resposta gerada: {resposta}")
-                            time.sleep(random.randint(10, 20))
+                # 🔹 Aguarda o botão ficar visível
+                WebDriverWait(driver, 5).until(EC.visibility_of(message_button))
 
-                        except Exception as e:
-                            print(f"⚠ Erro ao verificar mensagens recebidas: {e}")
-
-                        
-
-                    else:
-                        # Mandando mensagem diretamente no perfil
-                        print("Nenhuma conversa visível e clicável foi encontrada.")
-                        
-                        driver.get(profile_link)
-                        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                        time.sleep(random.randint(2, 5))
-
-                        # 🔹 Verifica todas as janelas abertas e muda para a mais recente
-                        window_handles = driver.window_handles
-                        driver.switch_to.window(window_handles[-1])
-                        
-                        # Verificar nacionalidade
-                        local = WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'text-body-small inline')]"))
-                        )
-                        local = local.text           
-                        first_name = first_name+" "+local
-                        
-                        resposta = gerar_resposta(first_name, PROMPT)
-                        
-                        time.sleep(random.randint(10, 20))
-                        close_all_chat_windows()
-                        
-                        # 🔥 Scroll suave para forçar o carregamento do botão
-                        def scroll_smooth(driver, total=1000, step=100, delay=0.5):
-                            for y in range(0, total, step):
-                                driver.execute_script(f"window.scrollTo(0, {y});")
-                                time.sleep(delay)
-                        scroll_smooth(driver)
-                        time.sleep(random.randint(2, 5))
-                        
-
-                    # 🔹 Tenta encontrar o botão "Enviar mensagem"
-                        try:
-                            message_button = WebDriverWait(driver, 20).until(
-                                EC.element_to_be_clickable((By.XPATH, 
-                                                            "//button[contains(@aria-label, 'Enviar mensagem') or contains(., 'Enviar mensagem')]"))
-                            )
-                        except TimeoutException:
-                            print(f"❌ Botão 'Enviar mensagem' não encontrado para {first_name}. Pulando...")
-                            continue  # Pula para o próximo contato
-
-                        # 🔹 Aguarda o botão ficar visível
-                        WebDriverWait(driver, 5).until(EC.visibility_of(message_button))
-
-                        # 🔹 Tenta clicar no botão normalmente
-                        try:
-                            print("🔹 Tentando clicar no botão 'Enviar mensagem'...")
-                            message_button.click()
-                        except (ElementClickInterceptedException, ElementNotInteractableException):
-                            print("⚠ O botão estava bloqueado, tentando clique via JavaScript...")
-                            driver.execute_script("arguments[0].click();", message_button)
-                    
-                        # 🔹 Aguarda até que a caixa de mensagem esteja carregada
-                        try:
-                            message_box = WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'msg-form__contenteditable')]"))
-                            )
-                        except TimeoutException:
-                            print(f"⚠ O chat para {first_name} não carregou. Recarregando a página e tentando novamente...")
-                            driver.refresh()
-                            time.sleep(random.randint(5, 10))
-                            continue  # Pula para o próximo contato
-                except Exception as e:
-                    print(f"Ocorreu um erro: {e}")
+                # 🔹 Tenta clicar no botão normalmente
+                try:
+                    print("🔹 Tentando clicar no botão 'Enviar mensagem'...")
+                    message_button.click()
+                except (ElementClickInterceptedException, ElementNotInteractableException):
+                    print("⚠ O botão estava bloqueado, tentando clique via JavaScript...")
+                    driver.execute_script("arguments[0].click();", message_button)
                 
+                
+                # 🔹 Aguarda até que a caixa de mensagem esteja carregada
+                try:
+                    message_box = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'msg-form__contenteditable')]"))
+                    )
+                except TimeoutException:
+                    print(f"⚠ O chat para {first_name} não carregou. Recarregando a página e tentando novamente...")
+                    driver.refresh()
+                    time.sleep(random.randint(5, 10))
+                    continue  # Pula para o próximo contato
+                
+                
+                # Extraindo mensagens recebidas 
+                try:
+                    mensagens = [
+                        el.text for el in driver.find_elements(By.CSS_SELECTOR, "li.msg-s-message-list__event p.msg-s-event-listitem__body")
+                    ]
+                except Exception as e:
+                    print(f"⚠ Erro ao verificar mensagens recebidas: {e}")
+                    
+                if mensagens:
+                    mensagem_concatenada = first_name + ": " + " ".join(mensagens)
+                    print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
+                else:
+                    local = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'text-body-small inline')]"))
+                    )
+                    local = local.text           
+                    mensagem_concatenada = first_name+" "+local
+                        
+                resposta = gerar_resposta(mensagem_concatenada, PROMPT)
+                print(f"Bot: {resposta}")
                 # Escreve a resposta no campo de texto
-                message_box.send_keys(resposta)
-
+                #message_box.click()
+                humanized_writing(resposta)
                 time.sleep(random.randint(5, 10))
 
                 try:

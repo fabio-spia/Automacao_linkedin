@@ -1,3 +1,4 @@
+from datetime import datetime
 import random
 import sys
 import os
@@ -16,7 +17,8 @@ from langdetect import detect
 
 #constantes
 COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
-CSV_FILE = "data/posts.csv"
+CSV_POSTS = "data/posts.csv"
+CSV_PROFILES = "data/profiles_conections.csv"
 PROMPT_COMMENT = "data/prompt_comment.txt"
 PROMPT_POST = "data/prompt_rate_post.txt"
 CONTEXTO_COMMENT = "data/dataset_comment.csv"
@@ -65,21 +67,10 @@ def send_comment(driver, max_posts, max_comments):
     print("Aguardando a página carregar...")
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
-    # Classificando por recentes
-    print("Clicando em 'Classificar por'...")
-    dropdown_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((
-    By.XPATH, "//button[contains(., 'Classificar por:')]"
-    )))
-    dropdown_button.click()
-    time.sleep(random.randint(2, 5))
-    recent_button = pyautogui.locateCenterOnScreen(RECENT, confidence=0.8)
-    pyautogui.click(recent_button)
-    time.sleep(random.randint(5, 10))
-
     deu_certo = 0
     post_index = 0
     qtd_posts = 0
-
+    posts_analisados = []
     # Carregar posts
     posts = driver.find_elements(By.XPATH, '//div[contains(@class, "feed-shared-update-v2")]')
 
@@ -100,7 +91,14 @@ def send_comment(driver, max_posts, max_comments):
             if post.text[:29] != f"Número da publicação no feed " or post.text[:30] == posts[post_index-1].text[:30]:
                 post_index += 1
                 continue
-
+            
+            #Verificar se o post ja foi analisado
+            if post.text[:100] in posts_analisados:
+                print("Post ja analisado")
+                post_index += 1
+                continue
+            posts_analisados.append(post.text[:100])
+            
             # Analisando post
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", post)
             print(f"Analisando post {qtd_posts+1}...")
@@ -109,18 +107,27 @@ def send_comment(driver, max_posts, max_comments):
             qtd_posts +=1
             post_index += 1  # Vai para o próximo post
 
+            #Analisa se o post a foi comentado
+            button_like = post.find_element(By.XPATH, ".//button[contains(@class,'react-button__trigger')]")
+            if button_like.get_attribute("aria-pressed") == "true":
+                print("Post ja comentado")
+                continue
+            
             # Ignora posts promovidos
             if "Promovido" in post.text:
                 print("--Anuncio--")
                 continue
             
             # Extrai legenda do post
-            try:
-                legend = post.find_elements(By.XPATH, './/span[@dir="ltr"]')
+            try:    
+                legend_el = post.find_element(
+                    By.XPATH,
+                    './/div[contains(@class,"update-components-update-v2__commentary")]'
+                )
+                legend = legend_el.text.strip()
             except Exception:
                 print(f"⚠ Erro ao analisar o post")
-                continue  
-            legend = " ".join([s.text.strip() for s in legend if s.text.strip()])
+                continue
             
             # Detecta idioma
             if not legend or detect(legend) != 'pt':
@@ -135,15 +142,20 @@ def send_comment(driver, max_posts, max_comments):
             reason = analysis[1:]
             print(f"Analise do bot: {reason}")
 
+
             # Comenta no post
             if classe == "1":
                 # Curtir post
-                button_like = post.find_element(By.XPATH, ".//button[contains(@class,'react-button__trigger')]")
-                if button_like:
-                    button_like.click()
+                #button_like = post.find_element(By.XPATH, ".//button[contains(@class,'react-button__trigger')]")
+                #if button_like:
+                button_like.click()
 
                 # gerando comentario
                 response = gerar_resposta(legend, PROMPT_COMMENT, contexto=CONTEXTO_COMMENT)
+                if response in legend: #Evita repetir comentarios
+                    print("Comentario repetido, gerando outro...")
+                    legend = legend.replace(response," ")
+                    response = gerar_resposta(legend, PROMPT_COMMENT, contexto=CONTEXTO_COMMENT)
                 print("Bot: "+response)
                 
                 # Enviando mensagem
@@ -154,14 +166,30 @@ def send_comment(driver, max_posts, max_comments):
                 time.sleep(random.randint(5,10))
                 humanized_writing(response)
                 button_commenter = WebDriverWait(post, 10).until(
-                    EC.presence_of_element_located((By.XPATH, ".//button[contains(@class,'box__submit-button')]"))
+                    EC.element_to_be_clickable((By.XPATH, ".//button[contains(@class,'box__submit-button')]"))
                 )
                 button_commenter.click()
                 time.sleep(5)
+
+                #Salvando perfil
+                perfil = post.find_element(By.CSS_SELECTOR, "a.update-components-actor__meta-link")
+                texto_perfil = perfil.get_attribute("aria-label")
+                url = perfil.get_attribute("href")
+                data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                nome = post.find_element(By.CSS_SELECTOR, ".update-components-actor__title span[aria-hidden='true']").text.strip()
+                titulo = post.find_element(By.CSS_SELECTOR,".update-components-actor__description span[aria-hidden='true']").text.strip()
+                if "1º" in texto_perfil:
+                    print("Ja é conexão")
+                else:
+                    with open(CSV_PROFILES, "a", newline="", encoding="utf-8") as file:
+                        writer = csv.writer(file)
+                        writer.writerow([data_hora, nome, url, titulo, legend])
+
                 # Salvando post
-                with open(CSV_FILE, "a", newline="", encoding="utf-8") as file:
+                with open(CSV_POSTS, "a", newline="", encoding="utf-8") as file:
                     writer = csv.writer(file)
                     writer.writerow([legend, reason, response])
+                
                 deu_certo +=1
 
             if deu_certo >= max_comments:               
@@ -201,6 +229,6 @@ if __name__ == "__main__":
 
     
     print("Enviando comentario...")
-    send_comment(driver,20,3)
+    send_comment(driver,20,5)
     driver.quit()        
     

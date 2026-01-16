@@ -17,21 +17,31 @@ from conection_sheet import adicionar_registro
 
 URL_PROFILE = "data/profiles_conections.csv" # Perfis do linkedin
 ERRO = "data/erro.csv" # Perfis que nao conseguiram se conectar
-PROFILES = "Agile_Trends.csv" # Perfis com a informação se é conectado ou não
 NAME_PROFILE = "data/name_profile.csv" 
-PROMPT = "data/prompt_event.txt"
-EVENTO = "Agile Trends"
+PROMPT_NOTA = "data/prompt_event.txt"
+EVENTO = "RD Summit"
+PROMPT_MESSAGE = "data/prompt_message.txt" # Prompt das mensagens"
+
+#Função para escrever de maneira automatizada
+def humanized_writing(text):
+    for char in text:
+        if char == " ":
+            pyautogui.press("space")
+        else:
+            pyperclip.copy(char)
+            pyautogui.hotkey("ctrl", "v")
+        time.sleep(random.uniform(0.1,0.5))
 
 # Função gerar menssagem personalizada dependendo se for conexão ou não
 def generate_message(name,conexao):
 
     if conexao == False:
         message = EVENTO+","+name+",não é conexão"
-        resposta = gerar_resposta(message,PROMPT)
+        #resposta = gerar_resposta(message,PROMPT)
     else:
         message = EVENTO+","+name+",é conexão"
-        resposta = gerar_resposta(message,PROMPT)
-    return resposta
+        #resposta = gerar_resposta(message,PROMPT)
+    #return resposta
 
 # Salvar dados caso ocorra erro
 def save_error(search_name, erro):
@@ -117,8 +127,26 @@ def send_mesage(conexao, name, driver):
     
     # Escreve a resposta no campo de texto
     name = name.split()[0]
-    resposta = generate_message(name,conexao)
-    message_box.send_keys(resposta)
+    # Extraindo mensagens recebidas 
+    try:
+        mensagens = [
+            el.text for el in driver.find_elements(By.CSS_SELECTOR, "li.msg-s-message-list__event p.msg-s-event-listitem__body")
+        ]
+    except Exception as e:
+        print(f"⚠ Erro ao verificar mensagens recebidas: {e}")
+        
+    if mensagens:
+        mensagem_concatenada = name + ": " + " ".join(mensagens)
+        print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
+    else:
+        local = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'text-body-small inline')]"))
+        )
+        local = local.text           
+        mensagem_concatenada = name+" "+local
+            
+    resposta = gerar_resposta(mensagem_concatenada, PROMPT_MESSAGE)
+    humanized_writing(resposta)
 
     time.sleep(random.randint(5, 10))
 
@@ -166,26 +194,26 @@ def send_mesage(conexao, name, driver):
     
 
 # Envia uma solicitação de conexão com mensagem
-def send_connection_request(driver):    
+def send_connection_request(driver, TEMA, PROMPT):    
     WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-    time.sleep(15)
+    time.sleep(random.randint(10,20))
     close_all_chat_windows()
     name = get_profile_name(driver)
+    name = name.split()[0]
     conexao = False
     # Verifica se ja é conexão
     if is_already_connected(driver):
         print(f"Já é conexão: {name}, enviando mensagem...")
         conexao = True
-        with open(PROFILES, "a", newline="", encoding="utf-8") as file:
-            writer = csv.writer(file)
-            writer.writerow([name, "sim"])
         send_mesage(conexao, name, driver)
         return
 
-    with open(PROFILES, "a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        writer.writerow([name, "não"])
-
+    if conexao == False:
+        message = TEMA+","+name+",não é conexão"
+        resposta = gerar_resposta(message,PROMPT)
+    else:
+        message = TEMA+","+name+",é conexão"
+        resposta = gerar_resposta(message,PROMPT)
      
     # 🔥 Scroll suave para forçar o carregamento do botão
     def scroll_smooth(driver, total=1000, step=100, delay=0.5):
@@ -213,7 +241,7 @@ def send_connection_request(driver):
                 print("botao nao encontrado")
                 break
         except Exception as e:
-            print(f"Erro ao conectar: {e}")
+            print(f"Botão não encontrado, clicando em: Mais")
             try:
                 # Se não encontrar, clica no botão "Mais" e depois no botão "Conectar"
                 more_button = pyautogui.locateCenterOnScreen("assets/mais.png", region=regiao_chat, confidence=0.8)
@@ -245,10 +273,10 @@ def send_connection_request(driver):
         time.sleep(random.randint(2,5))
 
         # Escrever a mensagem
-        name = name.split()[0]
-        message = generate_message(name, conexao)
+        message = resposta
         message_box = driver.find_element(By.XPATH, "//textarea[contains(@id, 'custom-message')]")
-        message_box.send_keys(message)
+        message_box.click()
+        humanized_writing(message)
         time.sleep(random.randint(1,5))
 
         # Enviar a solicitação
@@ -277,14 +305,12 @@ def search_profile(name_search):
     #Buscar nome
     try:
         text_field = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//input[contains(@class, 'search-global-typeahead__input--ellipsis')]"))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[data-testid='typeahead-input']"))
         )
     except Exception as e:
         print(e)    
     text_field.click()
-    pyperclip.copy(name_search)
-    pyautogui.hotkey('ctrl', 'v')
-    pyautogui.press('enter')
+    humanized_writing(name_search)
     
     try:
         WebDriverWait(driver, 10).until(
@@ -306,26 +332,30 @@ def search_profile(name_search):
         if len(profiles) == 0:
             print("❌ Nenhum perfil encontrado.")
             save_error(name_search, "nenhum perfil encontrado")
+            return False
         elif len(profiles) > 1:
             print("⚠ Vários perfis encontrados.")
             save_error(name_search, "mais de um perfil encontrado")
+            return False
         else:
             print(f"✅ Encontrado: {name_search}")
             link_elem.click()
-            return
+            return True
 
     except TimeoutException:
         print("⏱ Tempo excedido esperando resultados.")
         save_error(name_search, "nenhum perfil encontrado")
+        return False
 
 if __name__ == "__main__":
+    adicionar_registro("data/profiles.csv","AutoConnect")
     choise = input("Digite:\n 1 para conectar por url\n2 conectar por nome/empresa\n")
 
     driver = get_driver()
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
 
     # Carrega cookies do JSON
-    cookie_file_path ="data/cookies_teste.json"
+    cookie_file_path ="data/cookie_file_path.json"
     with open(cookie_file_path, "r", encoding="utf-8") as f:
         cookies = json.load(f)
 
@@ -338,23 +368,31 @@ if __name__ == "__main__":
     if choise == "1":
         with open(URL_PROFILE, newline='', encoding="utf-8") as csvfile:
             reader = csv.reader(csvfile)
+            next(reader)  # Pula o cabeçalho
             for row in reader:
                 profile_url = row[0]
                 driver.get(profile_url)
-                send_connection_request(driver)
-                time.sleep(random.randint(20, 40))
+                send_connection_request(driver, EVENTO, PROMPT_NOTA)
+                time.sleep(random.randint(30, 120))
     
     if choise == "2":
         with open(NAME_PROFILE, newline='', encoding="utf-8") as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
                 profile_name = row[0]+" "+row[1]
-                search_profile(profile_name)
-                send_connection_request(driver)
+                print(profile_name)
+                search_profile = search_profile(profile_name) 
+                if search_profile == False:
+                    profile_name = row[0]+" "+row[2]
+                    search_profile = search_profile(profile_name)
+                    if search_profile == False:
+                        continue
+                send_connection_request(driver, EVENTO, PROMPT_NOTA)
                 time.sleep(random.randint(20, 40))
     
+    driver.quit()
     #Salvando dados
-    adicionar_registro("AutoConnect")
+    adicionar_registro("data/profiles.csv","AutoConnect")
     print("Dados salvos")
         
-    driver.quit()
+    

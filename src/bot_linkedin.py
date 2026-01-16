@@ -1,3 +1,4 @@
+from pathlib import Path
 import openai
 import csv
 from dotenv import load_dotenv
@@ -6,10 +7,58 @@ import base64
 import requests
 from io import BytesIO
 import pandas as pd
+import google.generativeai as genai #no cmd py -m pip install google-generativeai python-dotenv pillow
+from PIL import Image
+from io import BytesIO
+
 load_dotenv("credentials/.env")
+
 
 # Sua chave da API da OpenAI
 client = openai.OpenAI(api_key = os.getenv("API_KEY")) # Preencha de acordo com sua variavel no arquivo .env
+
+#Gerar imagem
+def gerar_imagem(prompt: str, caminho_saida: str, model: str = "gemini-2.5-flash-image") -> str:
+    
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY nao encontrada nas variaveis de ambiente")
+
+    genai.configure(api_key=api_key)
+
+    out_path = Path(caminho_saida)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    m = genai.GenerativeModel(model)
+
+    resp = m.generate_content(
+        prompt,
+        generation_config={
+            "response_modalities": ["IMAGE"]
+        },
+    )
+
+    img_bytes = None
+
+    candidates = getattr(resp, "candidates", None) or []
+    for cand in candidates:
+        content = getattr(cand, "content", None)
+        parts = getattr(content, "parts", None) or []
+        for p in parts:
+            inline = getattr(p, "inline_data", None)
+            if inline and getattr(inline, "data", None):
+                img_bytes = inline.data
+                break
+        if img_bytes:
+            break
+
+    if not img_bytes:
+        raise RuntimeError("Nao veio imagem na resposta. Talvez o modelo nao suporte IMAGE ou sua conta nao tenha acesso")
+
+    out_path.write_bytes(img_bytes)
+    return str(out_path)
+
+
 
 # Função para codificar a imagem em base64 e criar o formato necessário
 def preparar_imagem_base64_url(url_imagem):
@@ -65,8 +114,11 @@ def gerar_resposta(mensagem_usuario, caminho_prompt, url_imagem=None, contexto=N
 
 # Execução
 if __name__ == "__main__":
-    prompt = "data/prompt_message.txt"
+    prompt = "data/creat_post/prompt_legend.txt"
     csv_treinamento = "data/dataset_comment.csv"
+    local_imagem = "data/creat_post/images/post.png"
+    prompt_imagem = input("Como voce quer sua imagem ? ")
+    gerar_imagem(prompt_imagem,local_imagem)
     print("Analisador de Texto e Imagem com GPT-4o")
     while True:
         user_input = input("Digite sua mensagem (ou 'sair' para encerrar): ")

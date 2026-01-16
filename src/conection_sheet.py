@@ -63,11 +63,42 @@ def adicionar_registro(csv_file,aba_name):
             sheet.append_row(row)
             print(f"Linha {cont} adicionada")   
 
+def consultar_registros(csv_file, aba_name, indice_coluna=None):
+    json_keyfile = "credentials/google_sheets_credentials.json"
+    nome_planilha = os.getenv("NAME_SHEET")
+
+    sheet = autenticar_google_sheets(json_keyfile, nome_planilha, aba_name)
+
+    # Obtém todos os dados da planilha
+    dados = sheet.get_all_values()
+
+    if not dados:
+        print("A planilha está vazia.")
+        return
+
+    with open(csv_file, "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+
+        # Se indice_coluna não for informado, escreve toda a planilha
+        if indice_coluna is None:
+            for linha in dados:
+                writer.writerow(linha)
+        else:
+            # Validação simples do índice
+            for linha in dados:
+                if len(linha) > indice_coluna:
+                    writer.writerow([linha[indice_coluna]])
+                else:
+                    writer.writerow([""])
+
+    print(f"Dados gravados com sucesso em {csv_file}")
+
 if __name__ == "__main__":
     print("\nSalvando perfis...")
-    adicionar_registro("data/profiles.csv","AutoAccept")
-    print("Salvando posts...")
-    adicionar_registro("data/posts.csv","AutoComment")
+    consultar_registros("data/creat_post/topics_posted.csv","AutoConnect",4)
+    adicionar_registro("data/profiles_conections.csv","AutoConnect")
+    
+    
 
            
                   

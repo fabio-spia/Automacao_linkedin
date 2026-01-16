@@ -36,10 +36,9 @@ def accept_invites(driver):
                 try:
                     # Capturar dados
                     user_card = btn.find_element(By.XPATH, "./ancestor::*[@role='listitem']")
-                    user_name_element = user_card.find_element(By.XPATH, ".//a[contains(@href, '/in/')]/strong")
+                    user_name_element = user_card.find_element(By.XPATH, ".//strong")                    
                     user_name = user_name_element.text.strip()
                     user_name = ''.join(c for c in user_name if not unicodedata.category(c).startswith('So')) #Remover emogi
-
                     user_title = ""
                     try:
                         user_title_element = user_card.find_element(By.XPATH, ".//p[contains(text(), '|')]")

@@ -1,3 +1,15 @@
 # Ignorar pastas __pycache__
 __pycache__/
 *.pyc
+src/filter_posts.py
+src/extract_comment.py
+extract_profile.py
+data/cookies_teste.json
+data/cookie_file_path.json
+data/cookie_file_path.json
+credentials/google_sheets_credentials.json
+data/cookie_file_path.json
+credentials/google_sheets_credentials.json
+credentials/google_sheets_credentials.json
+credentials/.env
+credentials/google_sheets_credentials.json

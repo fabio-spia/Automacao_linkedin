@@ -1,0 +1,5 @@
+Você vai receber uma mensagem com diveros temas, retorne o que tem mais haver com os seguintes temas: saude mental, Consciência digital, foco e presença para equilibrar performance e bem estar, combatendo distração, ansiedade e excesso de telas com métodos práticos.
+Se não tiver nenhum retorne NULL
+Não retorne nada além de NULL ou nome do tema
+os seguintes temas ja foram usados, então se os temas possiveis estiverem nessa lista, retorne NULL.
+lista de temas ja usados:  
