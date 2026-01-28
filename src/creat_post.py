@@ -11,9 +11,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
-
-
-
 from bot_linkedin import gerar_resposta, gerar_imagem
 from send_connection import send_connection_request
 from conection_sheet import adicionar_registro, consultar_registros
@@ -96,11 +93,19 @@ def creat_post(driver):
         "div.news-module__headline"
     )
     titles = [el.text.strip() for el in titles_elements if el.text.strip()]
+    
+    # Não repetir temas
+    itens_csv = set()
+    with open(TOPICS_POSTED, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            itens_csv.add(row["tema"].strip())
+    titles = [t for t in titles if t not in itens_csv]
     titles = ";".join(titles)
     print(titles)
     
     #Escolhendo o tema
-    tema = gerar_resposta(titles,PROMPT_TEMA,contexto=TOPICS_POSTED)
+    tema = gerar_resposta(titles,PROMPT_TEMA)
     
     
     if tema == "NULL":
@@ -114,8 +119,7 @@ def creat_post(driver):
                 # Clica no título
                 headline.find_element(By.XPATH, "./ancestor::a").click()
                 break
-        driver.get("https://www.linkedin.com/news/story/sa%C3%BAde-mental-piora-conforme-empresas-crescem-6889820/")
-        time.sleep(5)
+        time.sleep(random.uniform(5,10))
         #Conectar com editor e extrair dados
         print("Conectar com editor e extrair dados...")
         editor = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "span.storyline-info-card__creator-link a")))
@@ -130,7 +134,10 @@ def creat_post(driver):
         with open(CSV_PROFILES, "a", newline="", encoding="utf-8") as file:#Salvando no csv
             writer = csv.writer(file)
             writer.writerow([data_hora, nome, url, titulo, tema])
-        send_connection_request(driver,tema,PROMPT_CONNECTION)
+        conexao = driver.find_elements(By.XPATH,"//span[contains(@class,'dist-value') and normalize-space()='1º']")
+        if not conexao:
+            print("Conectando com "+nome)
+            send_connection_request(driver,tema,PROMPT_CONNECTION)  
 
         #Conectar com autores e extrair dados
         autores = []
@@ -147,11 +154,10 @@ def creat_post(driver):
             time.sleep(1)
             # Dentro do post, pega o link do nome do autor
             autores_in = post.find_elements(By.CSS_SELECTOR, "a[href*='/in/']")
-            autores_company = post.find_elements(By.CSS_SELECTOR, "a[href*='/company/']")
-            autor = (autores_in[0] if autores_in else (autores_company[0] if autores_company else None))
-            if not autor:
-                print(f"Post {i+1}: sem autor. Pulando.")
+            if not autores_in:
+                print(f"Post {i+1}: sem autor pessoa (/in). Pulando.")
                 continue
+            autor = autores_in[0]
             driver.execute_script("""
             arguments[0].scrollIntoView({block: 'center', inline: 'center'});
             """, autor)
@@ -171,9 +177,12 @@ def creat_post(driver):
             with open(CSV_PROFILES, "a", newline="", encoding="utf-8") as file:#Salvando no csv
                 writer = csv.writer(file)
                 writer.writerow([data_hora, nome, url, titulo, tema])
-            send_connection_request(driver,tema,PROMPT_CONNECTION)
+            conexao = driver.find_elements(By.XPATH,"//span[contains(@class,'dist-value') and normalize-space()='1º']")
+            if not conexao:
+                print("Conectando com "+nome)
+                send_connection_request(driver,tema,PROMPT_CONNECTION)     
             driver.back()
-            time.sleep(5)
+            time.sleep(random.uniform(5,10))
 
         print("Gerando legenda e imagem para o post...")    
         #Gerar legenda
@@ -182,13 +191,13 @@ def creat_post(driver):
         print(legend)
         
         #Gerar imagem
-        PROMPT_IMAGE = f"Crie uma imagem tamanho 1080x1080 para feed do linkedin, sobre: {tema}, e consciencia digital. Não escreva os temas, escrava algo atrativo correlacionado com os temas, mas muito cuidado com a ortografia. A imagem deve ser chamativa e impactante, para atrair o usuario a ler a legenda."
+        PROMPT_IMAGE = f"Crie uma imagem tamanho 1080x1080 para feed do linkedin, sobre: {tema}, e consciencia digital. Não escreva nada. A imagem deve ser chamativa e impactante, para atrair o usuario a ler a legenda."
         gerar_imagem(PROMPT_IMAGE,CAMINHO_IMG)
         
         #Criar post
         print("Criando post...")
         driver.get("https://www.linkedin.com/feed/")
-        time.sleep(5)
+        time.sleep(random.uniform(5,10))
         #Anexando imagem
         btn = WebDriverWait(driver,10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Adicionar mídia"].image_video-detour-btn')))
         driver.execute_script("arguments[0].click();", btn)
@@ -196,7 +205,7 @@ def creat_post(driver):
         file_input.send_keys(CAMINHO_IMG)
         botao_avancar = WebDriverWait(driver,10).until(EC.element_to_be_clickable((By.XPATH, '//button[@aria-label="Avançar"]')))
         botao_avancar.click()
-        time.sleep(5)
+        time.sleep(random.uniform(5,10))
         
         #Escrevendo legenda
         humanized_writing(legend)
@@ -212,7 +221,7 @@ def creat_post(driver):
             humanized_writing(" @"+autor['Nome'])
             clicar_perfil_linkedin(driver,autor['Nome'],autor['Titulo'])
                 
-        time.sleep(5)
+        time.sleep(random.uniform(5,10))
         # Clicar em publicar
         btn_publicar = WebDriverWait(driver,10).until(EC.element_to_be_clickable((By.XPATH, "//button[.//span[normalize-space()='Publicar']]")))
         btn_publicar.click()
@@ -258,4 +267,4 @@ if __name__ == "__main__":
     time.sleep(30)
     driver.quit()
     print("\nSalvando perfis pedido de conexão...")
-    #adicionar_registro("data/profiles_conections.csv","AutoConnect")
+    adicionar_registro("data/profiles_conections.csv","AutoConnect")
