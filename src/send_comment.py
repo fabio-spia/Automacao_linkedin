@@ -14,13 +14,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from config import get_driver
 from bot_linkedin import gerar_resposta
 from langdetect import detect
-
+from send_connection import send_connection_request
+from conection_sheet import adicionar_registro
 #constantes
 COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
 CSV_POSTS = "data/posts.csv"
 CSV_PROFILES = "data/profiles_conections.csv"
 PROMPT_COMMENT = "data/prompt_comment.txt"
 PROMPT_POST = "data/prompt_rate_post.txt"
+PROMPT_CONNECTION = "data/prompt_connection.txt"
 CONTEXTO_COMMENT = "data/dataset_comment.csv"
 CONTEXTO_POST = "data/dataset_post.csv"
 RECENT = "assets/recent.png" # Botão "Recentes"
@@ -92,13 +94,14 @@ def send_comment(driver, max_posts, max_comments):
                 post_index += 1
                 continue
             
+
             #Verificar se o post ja foi analisado
             if post.text[:100] in posts_analisados:
                 print("Post ja analisado")
                 post_index += 1
                 continue
             posts_analisados.append(post.text[:100])
-            
+
             # Analisando post
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", post)
             print(f"Analisando post {qtd_posts+1}...")
@@ -146,8 +149,6 @@ def send_comment(driver, max_posts, max_comments):
             # Comenta no post
             if classe == "1":
                 # Curtir post
-                #button_like = post.find_element(By.XPATH, ".//button[contains(@class,'react-button__trigger')]")
-                #if button_like:
                 button_like.click()
 
                 # gerando comentario
@@ -181,9 +182,15 @@ def send_comment(driver, max_posts, max_comments):
                 if "1º" in texto_perfil:
                     print("Ja é conexão")
                 else:
+                    print("Conectando com "+nome)
+                    driver.execute_script("window.open(arguments[0], '_blank');", url)
+                    driver.switch_to.window(driver.window_handles[-1])
+                    send_connection_request(driver,legend,PROMPT_CONNECTION)
                     with open(CSV_PROFILES, "a", newline="", encoding="utf-8") as file:
                         writer = csv.writer(file)
                         writer.writerow([data_hora, nome, url, titulo, legend])
+                    driver.close()  # fecha aba atual
+                    driver.switch_to.window(driver.window_handles[0])
 
                 # Salvando post
                 with open(CSV_POSTS, "a", newline="", encoding="utf-8") as file:
@@ -229,6 +236,10 @@ if __name__ == "__main__":
 
     
     print("Enviando comentario...")
-    send_comment(driver,20,5)
+    send_comment(driver,30,2)
+    print("Salvando posts...")
+    adicionar_registro("data/posts.csv","AutoComment")
+    print("\nSalvando perfis pedido de conexão...")
+    adicionar_registro("data/profiles_conections.csv","AutoConnect")
     driver.quit()        
     
