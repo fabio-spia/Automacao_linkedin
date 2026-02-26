@@ -1,11 +1,10 @@
 from accept_invites import accept_invites
-from send_messages import send_messages
-from conection_sheet import adicionar_registro
 from metrics import extract_metrics
 from config import get_driver
 from send_comment import send_comment
-import json
-from selenium.webdriver.support.ui import WebDriverWait
+from cookies import loads_cookies
+from respond_chat import respond_chat
+from creat_post import creat_post
 
 COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
 
@@ -13,46 +12,19 @@ COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
 if __name__ == "__main__":
     driver = get_driver()   # Abre o browser
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
-
-    # Carrega cookies do JSON
-    with open(COOKIE_FILE_PATH, "r", encoding="utf-8") as f:
-        cookies = json.load(f)
-
-    for cookie in cookies:
-        if "sameSite" in cookie:
-            if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
-                del cookie["sameSite"]
-        driver.add_cookie(cookie)
-    WebDriverWait(driver, 30).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-
-    # ✅ Verifica se foi redirecionado para login (cookies expirados)
-    if "login" in driver.current_url:
-        print("🔒 Sessão expirada. Faça login para atualizar cookies...")
-        driver.quit()
-
-        # 🧠 Abre o navegador e pede login manual
-        from save_cookies import save_cookies #Importar cookies do perfil desejado 
-        save_cookies()
-
-        print("✅ Cookies atualizados. Execute novamente")
+    loads_cookies(driver, COOKIE_FILE_PATH)    
 
     print("🔄 Aceitando convites...")
     accept_invites(driver)
 
-    print("\n📨 Enviando mensagens para os contatos aceitos...")
-    send_messages(driver)
-    print("\nSalvando perfis conectados...")
-    adicionar_registro("data/profiles.csv","AutoAccept")
-
     print("\nComentando em posts...")
     send_comment(driver,20,8)
-    print("Salvando posts...")
-    adicionar_registro("data/posts.csv","AutoComment")
+    
+    print("Respondendo chat...")    
+    respond_chat(driver)
 
-    print("\nSalvando perfis pedido de conexão...")
-    adicionar_registro("data/profiles_conections.csv","AutoConnect")
+    print("Criando post...")
+    creat_post(driver)
 
     print("Extraindo metrics de hoje")
     extract_metrics(driver)

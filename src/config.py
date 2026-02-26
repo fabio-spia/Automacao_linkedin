@@ -21,4 +21,3 @@ def get_driver():
         print("❌ Erro ao iniciar o Chrome:", e)
         raise
 
-    

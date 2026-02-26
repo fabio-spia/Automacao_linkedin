@@ -2,11 +2,7 @@ from datetime import datetime
 import random
 import sys
 import os
-import pyautogui
-import pyperclip
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import csv
-import json
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -16,6 +12,8 @@ from bot_linkedin import gerar_resposta
 from langdetect import detect
 from send_connection import send_connection_request
 from conection_sheet import adicionar_registro
+from cookies import loads_cookies
+
 #constantes
 COOKIE_FILE_PATH ="data/cookie_file_path.json" # Arquivo com cookies do perfil
 CSV_POSTS = "data/posts.csv"
@@ -25,17 +23,13 @@ PROMPT_POST = "data/prompt_rate_post.txt"
 PROMPT_CONNECTION = "data/prompt_connection.txt"
 CONTEXTO_COMMENT = "data/dataset_comment.csv"
 CONTEXTO_POST = "data/dataset_post.csv"
-RECENT = "assets/recent.png" # Botão "Recentes"
 
 #Função para escrever de maneira automatizada
-def humanized_writing(text):
+def humanized_writing(field, text):
     for char in text:
-        if char == " ":
-            pyautogui.press("space")
-        else:
-            pyperclip.copy(char)
-            pyautogui.hotkey("ctrl", "v")
-        time.sleep(random.uniform(0.1,0.5))
+        field.send_keys(char)
+        time.sleep(random.uniform(0.05, 0.25))
+
 
 # Função para fazer scroll e carregar mais posts
 def scroll_feed(driver, num_scrolls, delay):
@@ -94,14 +88,12 @@ def send_comment(driver, max_posts, max_comments):
                 post_index += 1
                 continue
             
-
             #Verificar se o post ja foi analisado
             if post.text[:100] in posts_analisados:
                 print("Post ja analisado")
                 post_index += 1
                 continue
             posts_analisados.append(post.text[:100])
-
             # Analisando post
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", post)
             print(f"Analisando post {qtd_posts+1}...")
@@ -165,7 +157,8 @@ def send_comment(driver, max_posts, max_comments):
                 )
                 button_commenter.click()
                 time.sleep(random.randint(5,10))
-                humanized_writing(response)
+                comment_box = WebDriverWait(post, 10).until(EC.element_to_be_clickable((By.XPATH,".//div[@contenteditable='true' and @role='textbox']")))
+                humanized_writing(comment_box, response)
                 button_commenter = WebDriverWait(post, 10).until(
                     EC.element_to_be_clickable((By.XPATH, ".//button[contains(@class,'box__submit-button')]"))
                 )
@@ -176,26 +169,29 @@ def send_comment(driver, max_posts, max_comments):
                 perfil = post.find_element(By.CSS_SELECTOR, "a.update-components-actor__meta-link")
                 texto_perfil = perfil.get_attribute("aria-label")
                 url = perfil.get_attribute("href")
-                data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 nome = post.find_element(By.CSS_SELECTOR, ".update-components-actor__title span[aria-hidden='true']").text.strip()
-                titulo = post.find_element(By.CSS_SELECTOR,".update-components-actor__description span[aria-hidden='true']").text.strip()
+                
                 if "1º" in texto_perfil:
                     print("Ja é conexão")
                 else:
                     print("Conectando com "+nome)
+                    aba_original = driver.current_window_handle
                     driver.execute_script("window.open(arguments[0], '_blank');", url)
                     driver.switch_to.window(driver.window_handles[-1])
-                    send_connection_request(driver,legend,PROMPT_CONNECTION)
-                    with open(CSV_PROFILES, "a", newline="", encoding="utf-8") as file:
-                        writer = csv.writer(file)
-                        writer.writerow([data_hora, nome, url, titulo, legend])
-                    driver.close()  # fecha aba atual
-                    driver.switch_to.window(driver.window_handles[0])
-
+                    try:
+                        send_connection_request(driver,legend,PROMPT_CONNECTION)
+                    except Exception as e:
+                        print(f"Erro ao processar {nome} ({url}): {e}")
+                    finally:
+                        # fecha a aba atual (a nova), se ainda existir
+                        if driver.current_window_handle != aba_original:
+                            driver.close()
+                        driver.switch_to.window(aba_original)
                 # Salvando post
-                with open(CSV_POSTS, "a", newline="", encoding="utf-8") as file:
-                    writer = csv.writer(file)
-                    writer.writerow([legend, reason, response])
+                print("Salvando post...")
+                row = [legend, reason, response]
+                adicionar_registro(row,"AutoComment")
+                
                 
                 deu_certo +=1
 
@@ -211,35 +207,8 @@ def send_comment(driver, max_posts, max_comments):
 if __name__ == "__main__":
     driver = get_driver() # Abre browser
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
-
-    # Carrega cookies do JSON
-    with open(COOKIE_FILE_PATH, "r", encoding="utf-8") as f:
-        cookies = json.load(f)
-
-    for cookie in cookies:
-        if "sameSite" in cookie:
-            if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
-                del cookie["sameSite"]
-        driver.add_cookie(cookie)
-    
-        # ✅ Verifica se foi redirecionado para login (cookies expirados)
-    if "login" in driver.current_url:
-        print("🔒 Sessão expirada. Faça login para atualizar cookies...")
-        driver.quit()
-
-        # 🧠 Abre o navegador e pede login manual
-        from save_cookies import save_cookies #Importar cookies do perfil desejado 
-        save_cookies()
-
-        print("✅ Cookies atualizados. Recomeçando a automação...")
-        send_comment()  # ⬅ Chama a si mesma novamente com cookies válidos
-
-    
+    loads_cookies(driver, COOKIE_FILE_PATH)
     print("Enviando comentario...")
-    send_comment(driver,30,2)
-    print("Salvando posts...")
-    adicionar_registro("data/posts.csv","AutoComment")
-    print("\nSalvando perfis pedido de conexão...")
-    adicionar_registro("data/profiles_conections.csv","AutoConnect")
+    send_comment(driver,20,5)
     driver.quit()        
     

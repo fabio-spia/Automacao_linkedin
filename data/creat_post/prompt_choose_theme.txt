@@ -1,4 +1,4 @@
-Você vai receber uma mensagem com diveros temas, retorne o que tem mais haver com os seguintes temas: saude mental, Consciência digital, foco e presença para equilibrar performance e bem estar, combatendo distração, ansiedade e excesso de telas com métodos práticos.
+Você vai receber uma mensagem com diveros temas, retorne o que tem mais haver com os seguintes temas: saude mental, Consciência digital, foco e presença para equilibrar performance e bem estar, combatendo distração, ansiedade e excesso de telas com métodos práticos, e Inteligencia artificial/IA(esse é menos prioritario que os demais)
 Se não tiver nenhum retorne NULL
 Retorne exatamente o nome do tema que voce recebeu e escolheu. Ou seja, se o tema for "a consciencia digital nos dias atuais", voce retorne "a consciencia digital nos dias atuais", e não "consciencia digital". 
 Não retorne o ";", ele é usado apenas para separar os temas

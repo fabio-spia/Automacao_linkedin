@@ -1,15 +1,13 @@
 from pathlib import Path
 import openai
-import csv
 from dotenv import load_dotenv
 import os
 import base64
-import requests
-from io import BytesIO
 import pandas as pd
 import google.generativeai as genai #no cmd py -m pip install google-generativeai python-dotenv pillow
-from PIL import Image
-from io import BytesIO
+import pyautogui
+import mimetypes
+import time
 
 load_dotenv("credentials/.env")
 
@@ -61,12 +59,18 @@ def gerar_imagem(prompt: str, caminho_saida: str, model: str = "gemini-2.5-flash
 
 
 # Função para codificar a imagem em base64 e criar o formato necessário
-def preparar_imagem_base64_url(url_imagem):
-    response = requests.get(url_imagem)
-    response.raise_for_status()
-    image_data = BytesIO(response.content)
-    base64_image = base64.b64encode(image_data.read()).decode("utf-8")
-    return f"data:image/jpeg;base64,{base64_image}"
+def preparar_imagem_base64_url(caminho_imagem):
+    if not os.path.isfile(caminho_imagem):
+        raise FileNotFoundError(f"Arquivo de imagem não encontrado: {caminho_imagem}")
+
+    mime, _ = mimetypes.guess_type(caminho_imagem)
+    if not mime:
+        mime = "image/png"
+
+    with open(caminho_imagem, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    return f"data:{mime};base64,{b64}"
 
 # Função para carregar dados do CSV e formar contexto base
 def carregar_contexto_csv(caminho_csv):
@@ -81,10 +85,12 @@ def carregar_contexto_csv(caminho_csv):
     return contexto.strip()
 
 # Função para gerar resposta
-def gerar_resposta(mensagem_usuario, caminho_prompt, url_imagem=None, contexto=None):
-    with open(caminho_prompt, "r", encoding="utf-8") as f:
-        PROMPT_BASE = f.read()
-
+def gerar_resposta(mensagem_usuario, caminho_prompt, caminho_imagem=None, contexto=None):
+    if os.path.isfile(caminho_prompt):
+        with open(caminho_prompt, "r", encoding="utf-8") as f:
+            PROMPT_BASE = f.read()
+    else:
+        PROMPT_BASE = caminho_prompt
      # Adiciona contexto extra do CSV, se fornecido
     if contexto:
         contexto = carregar_contexto_csv(contexto)
@@ -92,13 +98,13 @@ def gerar_resposta(mensagem_usuario, caminho_prompt, url_imagem=None, contexto=N
 
     mensagens = [{"role": "system", "content": PROMPT_BASE}]
 
-    if url_imagem:
-        imagem_base64 = preparar_imagem_base64_url(url_imagem)
+    if caminho_imagem:
+        imagem_data_url = preparar_imagem_base64_url(caminho_imagem)
         mensagens.append({
             "role": "user",
             "content": [
                 {"type": "text", "text": mensagem_usuario},
-                {"type": "image_url", "image_url": {"url": imagem_base64}}
+                {"type": "image_url", "image_url": {"url": imagem_data_url}}
             ]
         })
     else:
@@ -111,20 +117,31 @@ def gerar_resposta(mensagem_usuario, caminho_prompt, url_imagem=None, contexto=N
 
     return response.choices[0].message.content.strip()
 
+#Função para extrair dados da tela
+def extrair_dado(informacao):
+    time.sleep(5)
+    print_tela = pyautogui.screenshot()
+    print_tela.save("assets/print_tela.png")
+    prompt_extrair_dado = "Voce vai receber um print da tela, retorne o dado que for pedido na mensagem. Apenas o dado. Se naõ encontrar retorne null"
+    resposta = gerar_resposta(informacao, prompt_extrair_dado,"assets/print_tela.png") 
+    if resposta and resposta.strip().lower() == "null":
+        return False
+    else:
+        return resposta
+    
 
 # Execução
 if __name__ == "__main__":
-    prompt = "data/creat_post/prompt_legend.txt"
-    csv_treinamento = "data/dataset_comment.csv"
-    local_imagem = "data/creat_post/images/post.png"
-    prompt_imagem = input("Como voce quer sua imagem ? ")
-    gerar_imagem(prompt_imagem,local_imagem)
-    print("Analisador de Texto e Imagem com GPT-4o")
+    
+    
+    print("Teste")
     while True:
+
         user_input = input("Digite sua mensagem (ou 'sair' para encerrar): ")
+        time.sleep(10)
         if user_input.lower() == 'sair':
             break
-        url_imagem = input("Cole o link da imagem (ou pressione ENTER para não usar imagem): ").strip()
-        resposta = gerar_resposta(user_input, prompt)
+        #resposta = gerar_resposta(user_input,"responda oque for perguntado sobre a imagem","assets/print_tela.png")
+        resposta = extrair_dado(user_input)
         print("\nResposta:\n", resposta)
         print("-" * 50)

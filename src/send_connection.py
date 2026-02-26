@@ -8,12 +8,12 @@ import pyperclip
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException, ElementNotInteractableException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 from config import get_driver
-from send_messages import close_all_chat_windows
-import json
-from bot_linkedin import gerar_resposta
+from bot_linkedin import gerar_resposta, extrair_dado
 from conection_sheet import adicionar_registro
+from send_messages import send_message
+from cookies import loads_cookies
 
 URL_PROFILE = "data/profiles_conections.csv" # Perfis do linkedin
 ERRO = "data/erro.csv" # Perfis que nao conseguiram se conectar
@@ -21,6 +21,7 @@ NAME_PROFILE = "data/name_profile.csv"
 PROMPT_NOTA = "data/prompt_event.txt"
 EVENTO = "RD Summit"
 PROMPT_MESSAGE = "data/prompt_message.txt" # Prompt das mensagens"
+cookie_file_path ="data/cookie_file_path.json"
 
 #Função para escrever de maneira automatizada
 def humanized_writing(text):
@@ -31,17 +32,6 @@ def humanized_writing(text):
             pyperclip.copy(char)
             pyautogui.hotkey("ctrl", "v")
         time.sleep(random.uniform(0.1,0.5))
-
-# Função gerar menssagem personalizada dependendo se for conexão ou não
-def generate_message(name,conexao):
-
-    if conexao == False:
-        message = EVENTO+","+name+",não é conexão"
-        #resposta = gerar_resposta(message,PROMPT)
-    else:
-        message = EVENTO+","+name+",é conexão"
-        #resposta = gerar_resposta(message,PROMPT)
-    #return resposta
 
 # Salvar dados caso ocorra erro
 def save_error(search_name, erro):
@@ -61,143 +51,32 @@ def is_already_connected(driver):
 def get_profile_name(driver):
     try:
         user_name_element = WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/in/') and @aria-label]"))
+            EC.presence_of_element_located((By.XPATH, "//main//h2[normalize-space()]"))
         )
         user_name = user_name_element.text.strip()
+        print(user_name)
         return user_name
     except TimeoutException:
+        print("Erro para extrair o nome")
         return " "  # Caso o nome não seja encontrado, retorna um valor padrão
 
 def get_profile_title(driver):
     try:
-        user_title_element = WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'text-body-medium break-words')]"))
-        )
-        user_title = user_title_element.text.strip()
+        top_card = WebDriverWait(driver,10).until(EC.presence_of_element_located((By.XPATH, "//main//section[.//h2][1]")))
+        dados_profile = top_card.find_elements(By.TAG_NAME, "p")
+        dados_profile = [p.text.strip() for p in dados_profile if p.text.strip()]
+        dados_profile = "\n* ".join(dados_profile)
+        user_title = extrair_dado("Titulo do perfil aberto")
+        print(user_title)
         return user_title
     except TimeoutException:
+        print("Erro para extrair o titulo")
         return " "  # Caso o nome não seja encontrado, retorna um valor padrã'o
     
-def send_mesage(conexao, name, driver):
-    
-    # 🔹 Verifica todas as janelas abertas e muda para a mais recente
-    #window_handles = driver.window_handles
-    #driver.switch_to.window(window_handles[-1])
-
-    # 🔥 Scroll suave para forçar o carregamento do botão
-    def scroll_smooth(driver, total=1000, step=100, delay=0.5):
-        for y in range(0, total, step):
-            driver.execute_script(f"window.scrollTo(0, {y});")
-            time.sleep(delay)
-    scroll_smooth(driver)
-    time.sleep(random.randint(2,5))
-    
-    # 🔹 Tenta encontrar o botão "Enviar mensagem"
-    try:
-        message_button = WebDriverWait(driver, 20).until(
-            EC.element_to_be_clickable((By.XPATH, 
-                                        "//button[contains(@aria-label, 'Enviar mensagem') or contains(., 'Enviar mensagem')]"))
-        )
-    except TimeoutException:
-        print(f"❌ Botão 'Enviar mensagem' não encontrado para {name}. Pulando...")
-        
-
-    # 🔹 Aguarda o botão ficar visível
-    WebDriverWait(driver, 5).until(EC.visibility_of(message_button))
-
-    # 🔹 Tenta clicar no botão normalmente
-    try:
-        print("🔹 Clicando no botão 'Enviar mensagem'...")
-        message_button.click()
-    except (ElementClickInterceptedException, ElementNotInteractableException):
-        print("⚠ O botão estava bloqueado, tentando clique via JavaScript...")
-        driver.execute_script("arguments[0].click();", message_button)
-
-
-
-    # 🔹 Aguarda até que a caixa de mensagem esteja carregada
-    try:
-        message_box = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'msg-form__contenteditable')]"))
-        )
-    except TimeoutException:
-        print(f"⚠ O chat para {name} não carregou. Recarregando a página e tentando novamente...")
-        driver.refresh()
-        time.sleep(random.randint(5, 10))
-    
-    # Escreve a resposta no campo de texto
-    name = name.split()[0]
-    # Extraindo mensagens recebidas 
-    try:
-        mensagens = [
-            el.text for el in driver.find_elements(By.CSS_SELECTOR, "li.msg-s-message-list__event p.msg-s-event-listitem__body")
-        ]
-    except Exception as e:
-        print(f"⚠ Erro ao verificar mensagens recebidas: {e}")
-        
-    if mensagens:
-        mensagem_concatenada = name + ": " + " ".join(mensagens)
-        print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
-    else:
-        local = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'text-body-small inline')]"))
-        )
-        local = local.text           
-        mensagem_concatenada = name+" "+local
-            
-    resposta = gerar_resposta(mensagem_concatenada, PROMPT_MESSAGE)
-    humanized_writing(resposta)
-
-    time.sleep(random.randint(5, 10))
-
-    try:
-
-        # 🔹 Espera até o botão "Enviar" estar presente e visível
-        send_button = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, "//button[contains(@class, 'msg-form__send-button') and text()='Enviar']"))
-        )
-
-        # 🔹 Rola a tela até o botão "Enviar"
-        driver.execute_script("arguments[0].scrollIntoView(true);", send_button)
-        time.sleep(random.randint(2,5))
-
-        # 🔹 Verifica se o botão está realmente interativo antes de clicar
-        WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'msg-form__send-button') and text()='Enviar']"))
-        )
-
-        # 🔹 Tenta clicar normalmente
-        try:
-            send_button.click()
-        except:
-            print("⚠ Clique normal falhou, tentando JavaScript...")
-            driver.execute_script("arguments[0].click();", send_button)
-
-        print("✅ Mensagem enviada!")
-    except TimeoutException:
-        print("❌ Botão 'Enviar' não encontrado ou não carregou.")
-    except Exception as e:
-        print(f"⚠ Erro desconhecido: {e}")
-    time.sleep(random.randint(3,5))
-
-    print(f"✅ Mensagem enviada para {name}")
-    
-    # Salvando dados
-    name = get_profile_name(driver)
-    url = driver.current_url
-    title = get_profile_title(driver)
-    data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open("data/profiles.csv", "a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        writer.writerow([data_hora, name, url, title])
-
-    
-
 # Envia uma solicitação de conexão com mensagem
 def send_connection_request(driver, TEMA, PROMPT):    
     WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     time.sleep(random.randint(10,20))
-    close_all_chat_windows()
     name = get_profile_name(driver)
     name = name.split()[0]
     conexao = False
@@ -205,7 +84,7 @@ def send_connection_request(driver, TEMA, PROMPT):
     if is_already_connected(driver):
         print(f"Já é conexão: {name}, enviando mensagem...")
         conexao = True
-        send_mesage(conexao, name, driver)
+        send_message(driver)
         return
 
     if conexao == False:
@@ -215,13 +94,6 @@ def send_connection_request(driver, TEMA, PROMPT):
         message = TEMA+","+name+",é conexão"
         resposta = gerar_resposta(message,PROMPT)
      
-    # 🔥 Scroll suave para forçar o carregamento do botão
-    def scroll_smooth(driver, total=1000, step=100, delay=0.5):
-        for y in range(0, total, step):
-            driver.execute_script(f"window.scrollTo(0, {y});")
-            time.sleep(delay)
-    
-    scroll_smooth(driver)
     time.sleep(random.randint(2,5))
     
    
@@ -230,12 +102,13 @@ def send_connection_request(driver, TEMA, PROMPT):
     while True:
         try:
             # Tenta encontrar o botão "Conectar" diretamente
-            regiao_chat = (0, 50, 1366, 718)  # (x, y, largura, altura)
+            regiao_chat = (0, 300, 700, 600)  # (x, y, largura, altura)
             connect_button = pyautogui.locateCenterOnScreen("assets/conectar.png", region=regiao_chat, confidence=0.8)
             
+            
             if connect_button:
-                pyautogui.click(connect_button)  # Clica no botão de fechar
-                time.sleep(0.5)  # Pequena pausa para garantir o fechamento
+                pyautogui.click(connect_button)  
+                time.sleep(0.5)  
                 break                
             else:
                 print("botao nao encontrado")
@@ -247,7 +120,7 @@ def send_connection_request(driver, TEMA, PROMPT):
                 more_button = pyautogui.locateCenterOnScreen("assets/mais.png", region=regiao_chat, confidence=0.8)
                 if more_button:
                     pyautogui.click(more_button)
-                    time.sleep(random.randint(2,5))
+                    time.sleep(random.randint(2,5))                    
                     connect_button = pyautogui.locateCenterOnScreen("assets/conectar2.png", region=regiao_chat, confidence=0.8)
                     pyautogui.click(connect_button)
                     
@@ -264,38 +137,36 @@ def send_connection_request(driver, TEMA, PROMPT):
 
     try:
         time.sleep(random.randint(2,5))
-
+        pyautogui.click(718, 252)
+        regiao_chat = (100, 50, 1000, 400)
         # Adicionar nota
-        add_note_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Adicionar nota']]"))
-        )
-        add_note_button.click()
         time.sleep(random.randint(2,5))
-
+        add_note_button = pyautogui.locateCenterOnScreen("assets/add_nota.png", region=regiao_chat, confidence=0.8)
+        pyautogui.click(add_note_button)
+        time.sleep(random.randint(1,5))
         # Escrever a mensagem
         message = resposta
-        message_box = driver.find_element(By.XPATH, "//textarea[contains(@id, 'custom-message')]")
-        message_box.click()
         humanized_writing(message)
         time.sleep(random.randint(1,5))
-
+        
         # Enviar a solicitação
-        send_button = driver.find_element(By.XPATH, "//button[.//span[text()='Enviar']]")
-        send_button.click()
+        send_button = pyautogui.locateCenterOnScreen("assets/enviar.png", region=regiao_chat, confidence=0.8)
+        pyautogui.click(send_button)
         time.sleep(random.randint(2,5))
 
         print(f"Convite enviado para {name}")
     except (TimeoutException, ElementClickInterceptedException) as e:
         print(f"Erro ao enviar convite para {name}: {e}")
 
+    
+    time.sleep(random.randint(2,5))
     # Salvando dados
     name = get_profile_name(driver)
     url = driver.current_url
     title = get_profile_title(driver)
     data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open("data/profiles.csv", "a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        writer.writerow([data_hora, name, url, title])
+    row = [data_hora, name, url, title,TEMA]
+    adicionar_registro(row,"AutoConnect")
 
 def search_profile(name_search):
     driver.get("https://www.linkedin.com/search/results/people")
@@ -348,32 +219,21 @@ def search_profile(name_search):
         return False
 
 if __name__ == "__main__":
-    adicionar_registro("data/profiles.csv","AutoConnect")
     choise = input("Digite:\n 1 para conectar por url\n2 conectar por nome/empresa\n")
 
     driver = get_driver()
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
-
-    # Carrega cookies do JSON
-    cookie_file_path ="data/cookie_file_path.json"
-    with open(cookie_file_path, "r", encoding="utf-8") as f:
-        cookies = json.load(f)
-
-    for cookie in cookies:
-        if "sameSite" in cookie:
-            if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
-                del cookie["sameSite"]
-        driver.add_cookie(cookie)
+    loads_cookies(driver, cookie_file_path)
 
     if choise == "1":
         with open(URL_PROFILE, newline='', encoding="utf-8") as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Pula o cabeçalho
             for row in reader:
-                profile_url = row[0]
+                profile_url = row[2]
                 driver.get(profile_url)
                 send_connection_request(driver, EVENTO, PROMPT_NOTA)
-                time.sleep(random.randint(30, 120))
+                time.sleep(random.randint(10, 30))
     
     if choise == "2":
         with open(NAME_PROFILE, newline='', encoding="utf-8") as csvfile:
@@ -391,8 +251,6 @@ if __name__ == "__main__":
                 time.sleep(random.randint(20, 40))
     
     driver.quit()
-    #Salvando dados
-    adicionar_registro("data/profiles.csv","AutoConnect")
-    print("Dados salvos")
+
         
     

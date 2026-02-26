@@ -45,23 +45,13 @@ def autenticar_google_sheets(json_keyfile, sheet_name, aba_name):
     sheet = client.open(sheet_name).worksheet(aba_name)
     return sheet
 
-# Função para adicionar um novo registro
-def adicionar_registro(csv_file,aba_name):
+def adicionar_registro(row,aba_name):
     json_keyfile = "credentials/google_sheets_credentials.json"
     nome_planilha = os.getenv("NAME_SHEET") # Preencha de acordo com sua variavel no arquivo .env
     sheet = autenticar_google_sheets(json_keyfile, nome_planilha, aba_name)
     
-    with open(csv_file, "r", encoding="utf-8") as file:
-        reader = csv.reader(file)
-        
-        next(reader)  # Pula o cabeçalho    
-        cont = 0
-        for row in reader:
-            if not row:  # ignora linhas vazias
-                continue
-            cont += 1
-            sheet.append_row(row)
-            print(f"Linha {cont} adicionada")   
+    sheet.append_row(row)
+    print(f"Registro adcionado")
 
 def consultar_registros(csv_file, aba_name, indice_coluna=None):
     json_keyfile = "credentials/google_sheets_credentials.json"
@@ -95,8 +85,8 @@ def consultar_registros(csv_file, aba_name, indice_coluna=None):
 
 if __name__ == "__main__":
     print("\nSalvando perfis...")
-    consultar_registros("data/creat_post/topics_posted.csv","AutoConnect",4)
-    adicionar_registro("data/profiles_conections.csv","AutoConnect")
+    row = []
+    adicionar_registro(row,"AutoAccept")
     
     
 

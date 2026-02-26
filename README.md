@@ -6,8 +6,10 @@ O fluxo principal pode:
 - enviar mensagens personalizadas com IA
 - comentar em posts (com filtro por relevancia e idioma)
 - enviar pedidos de conexao para autores de posts comentados (com nota personalizada)
-- registrar tudo em CSV e no Google Sheets
+- registrar tudo no Google Sheets
 - extrair metricas do SSI
+- criar post
+- responder chat (tema + legenda + imagem via Gemini)
 
 Aviso importante:
 Automacoes no LinkedIn podem violar termos de uso e podem gerar bloqueios, captchas ou restricoes na conta.
@@ -17,13 +19,12 @@ Use com cuidado, de preferencia em ambiente de testes, e mantenha delays altos.
 
 1) Aceitar convites
 - Abre o gerenciador de convites e aceita todos
-- Salva data, nome, url do perfil e titulo em `data/profiles.csv`
+- Salva data, nome, url do perfil e titulo no google sheets
 
 2) Enviar mensagens (pos aceite)
 - Abre o perfil e clica em "Enviar mensagem"
 - Gera resposta via IA usando `data/prompt_message.txt`
 - Digita de forma humanizada (PyAutoGUI + pyperclip)
-- Fecha chats abertos usando imagens em `assets/fechar1.png` e `assets/fechar2.png`
 
 3) Comentar no feed
 - Varre posts do feed e ignora:
@@ -35,6 +36,7 @@ Use com cuidado, de preferencia em ambiente de testes, e mantenha delays altos.
 - Salva:
   - `data/posts.csv` com legenda, motivo e comentario
   - `data/profiles_conections.csv` com perfis dos autores (para depois conectar)
+- Envia conexão para autores dos posts
 
 4) Enviar conexoes para perfis coletados
 - Le `data/profiles_conections.csv`
@@ -51,6 +53,11 @@ Use com cuidado, de preferencia em ambiente de testes, e mantenha delays altos.
 - Coleta temas em alta no feed
 - Escolhe tema, gera legenda e gera imagem via Gemini
 - Anexa imagem e marca perfis
+
+7) responder chat
+- Abre as conversas não lidas
+- Responde utilizando IA
+- Notifica caso seja uma conexão importante
 
 ## Requisitos
 
@@ -102,7 +109,7 @@ Automacao_linkedin/
   src/
     main.py
     config.py
-    save_cookies.py
+    cookies.py
     accept_invites.py
     send_messages.py
     send_comment.py
@@ -114,29 +121,40 @@ Automacao_linkedin/
     filter_posts.py
     extract_comment.py
     extract_url.py
+    respond_chat.py
   assets/
-    fechar1.png
-    fechar2.png
+    add_nota.png
     conectar.png
     conectar2.png
+    enviar.png
     mais.png
-    recent.png
+    mensage.png
+    print_tela.png
   credentials/
     .env
     google_sheets_credentials.json
   data/
     cookie_file_path.json
     cookies_teste.json
+
     profiles.csv
     posts.csv
     profiles_conections.csv
+    erro.csv
+
     dataset_comment.csv
     dataset_post.csv
+
+    name_profile.csv
+    palestrantes.csv
+
     prompt_message.txt
     prompt_comment.txt
     prompt_rate_post.txt
     prompt_connection.txt
     prompt_event.txt
+    prompt_respond.txt
+
     creat_post/
       images/post.png
       prompt_choose_theme.txt
