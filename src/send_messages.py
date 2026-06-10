@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from config import get_driver
-from bot_linkedin import gerar_resposta, extrair_dado
+from bot_linkedin import gerar_resposta, extrair_dado, debugging
 from cookies import loads_cookies
 
 #Constantes
@@ -38,10 +38,20 @@ def send_message(driver):
     try:    
         message_button = pyautogui.locateCenterOnScreen("assets/mensage.png", region=regiao_chat, confidence=0.8)
         pyautogui.click(message_button)
-    except TimeoutException:
+    except Exception as e:
         print(f"❌ Botão 'Enviar mensagem' não encontrado para {first_name}. Pulando...")
-
+        debugging(str(e))
+    
     time.sleep(random.randint(5, 10))
+    
+    try:
+        field = pyautogui.locateCenterOnScreen("assets/campo_msg.png", region=regiao_chat, confidence=0.6)
+        pyautogui.click(field)
+    except Exception as e:
+        print(f"❌ Campo de mensagem não encontrado para {first_name}. Pulando...")
+        debugging(str(e))
+    
+
     # Extraindo mensagen recebida
     mensagen = extrair_dado("Mensagem enviada por "+name)
     if mensagen != False:
@@ -49,7 +59,7 @@ def send_message(driver):
         print(f"🔍 Mensagem recebida: {mensagem_concatenada}")
     else:
         # Verificar nacionalidade
-        local = extrair_dado("Local no perfil de "+name) 
+        local = extrair_dado("Local no perfil aberto, cidade, estado, ou pais... ") 
         if local != False:
             print(local)
         else:
@@ -69,7 +79,7 @@ if __name__ == "__main__":
     driver = get_driver()   # Abre o browser
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
     loads_cookies(driver, COOKIE_FILE_PATH)
-    url_profile = " "
+    url_profile = "https://www.linkedin.com/in/jo%C3%A3o-pedro-wanderley-4417801b5/"
     driver.get(url_profile)
     send_message(driver)
     driver.quit()

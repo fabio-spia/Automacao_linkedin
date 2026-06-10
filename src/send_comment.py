@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from config import get_driver
-from bot_linkedin import gerar_resposta
+from bot_linkedin import gerar_resposta, debugging
 from langdetect import detect
 from send_connection import send_connection_request
 from conection_sheet import adicionar_registro
@@ -38,38 +38,18 @@ def scroll_feed(driver, num_scrolls, delay):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(delay)
 
-def cont_post(posts):
-    cont = 0
-    for post in posts:
-        print(f"texto do post:\n{post.text[:100]}")
-        if post.text[:30] != f"Número da publicação no feed {cont+1}":
-            continue
-        cont += 1
-    return cont
-
-def clear_posts(posts):
-    index = 0
-    posts_true = []
-    for post in posts:
-        if post.text[:29] != f"Número da publicação no feed " or post.text[:30] == posts[index-1].text[:30]:
-            index += 1
-            continue
-        posts_true.append(post)
-        index += 1
-    return posts_true
-
 def send_comment(driver, max_posts, max_comments):
     driver.get("https://www.linkedin.com/feed/")  # Abre LinkedIn
     print("Aguardando a página carregar...")
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
     deu_certo = 0
     post_index = 0
     qtd_posts = 0
     posts_analisados = []
     # Carregar posts
-    posts = driver.find_elements(By.XPATH, '//div[contains(@class, "feed-shared-update-v2")]')
-
+    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, '//div[@data-testid="mainFeed"]//div[@role="listitem"]')))
+    posts = driver.find_elements(By.XPATH, '//div[@data-testid="mainFeed"]//div[@role="listitem"]')
     
     while qtd_posts < max_posts:    
         try:
@@ -78,16 +58,9 @@ def send_comment(driver, max_posts, max_comments):
             if post_index >= len(posts):
                 print("Carregando novos posts...")
                 scroll_feed(driver, num_scrolls=1, delay=3)
-                posts = driver.find_elements(By.XPATH, '//div[contains(@class, "feed-shared-update-v2")]')
-        
+                posts = driver.find_elements(By.XPATH, '//div[@data-testid="mainFeed"]//div[@role="listitem"]')
 
             post = posts[post_index]
-
-            # Verificar se realmente e um post
-            if post.text[:29] != f"Número da publicação no feed " or post.text[:30] == posts[post_index-1].text[:30]:
-                post_index += 1
-                continue
-            
             #Verificar se o post ja foi analisado
             if post.text[:100] in posts_analisados:
                 print("Post ja analisado")
@@ -103,8 +76,8 @@ def send_comment(driver, max_posts, max_comments):
             post_index += 1  # Vai para o próximo post
 
             #Analisa se o post a foi comentado
-            button_like = post.find_element(By.XPATH, ".//button[contains(@class,'react-button__trigger')]")
-            if button_like.get_attribute("aria-pressed") == "true":
+            button_like = post.find_element(By.XPATH, ".//button[contains(@aria-label, 'reação')]")
+            if "gostei" in button_like.get_attribute("aria-label").lower():
                 print("Post ja comentado")
                 continue
             
@@ -117,11 +90,12 @@ def send_comment(driver, max_posts, max_comments):
             try:    
                 legend_el = post.find_element(
                     By.XPATH,
-                    './/div[contains(@class,"update-components-update-v2__commentary")]'
+                    './/*[@data-testid="expandable-text-box"]'
                 )
                 legend = legend_el.text.strip()
-            except Exception:
-                print(f"⚠ Erro ao analisar o post")
+            except Exception as e:
+                print(f"⚠ Erro ao extrair legenda {e}")
+                debugging(str(e))
                 continue
             
             # Detecta idioma
@@ -153,23 +127,24 @@ def send_comment(driver, max_posts, max_comments):
                 
                 # Enviando mensagem
                 button_commenter = WebDriverWait(post, 10).until(
-                    EC.presence_of_element_located((By.XPATH, ".//button[contains(@class,'comment-button flex-wrap')]"))
+                    EC.presence_of_element_located((By.XPATH, ".//button[.//span[contains(text(),'Comentar')]]"))
                 )
-                button_commenter.click()
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", button_commenter)
+                driver.execute_script("arguments[0].click();", button_commenter)
                 time.sleep(random.randint(5,10))
                 comment_box = WebDriverWait(post, 10).until(EC.element_to_be_clickable((By.XPATH,".//div[@contenteditable='true' and @role='textbox']")))
                 humanized_writing(comment_box, response)
                 button_commenter = WebDriverWait(post, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, ".//button[contains(@class,'box__submit-button')]"))
+                    EC.element_to_be_clickable((By.XPATH, "( .//button[.//span[normalize-space()='Comentar']] )[last()]"))
                 )
-                button_commenter.click()
+                driver.execute_script("arguments[0].click();", button_commenter)
                 time.sleep(5)
 
                 #Salvando perfil
-                perfil = post.find_element(By.CSS_SELECTOR, "a.update-components-actor__meta-link")
-                texto_perfil = perfil.get_attribute("aria-label")
+                perfil = post.find_element(By.XPATH, "(.//a[contains(@href,'/in/') and .//p])[1]")                
+                texto_perfil = (perfil.find_element(By.XPATH,".//*[@aria-label]").get_attribute("aria-label") or "").strip()
                 url = perfil.get_attribute("href")
-                nome = post.find_element(By.CSS_SELECTOR, ".update-components-actor__title span[aria-hidden='true']").text.strip()
+                nome = perfil.find_element(By.XPATH, ".//p[1]").text.strip()
                 
                 if "1º" in texto_perfil:
                     print("Ja é conexão")
@@ -182,6 +157,7 @@ def send_comment(driver, max_posts, max_comments):
                         send_connection_request(driver,legend,PROMPT_CONNECTION)
                     except Exception as e:
                         print(f"Erro ao processar {nome} ({url}): {e}")
+                        debugging(e)
                     finally:
                         # fecha a aba atual (a nova), se ainda existir
                         if driver.current_window_handle != aba_original:
@@ -200,15 +176,16 @@ def send_comment(driver, max_posts, max_comments):
         
             
         except Exception as e:
-            print(f"⚠ Erro ao analisar post: {e}")
+            print(f"⚠ Erro: {e}")
+            debugging(str(e))
             post_index += 1  # Pula esse post problemático
-   
+    return
 
 if __name__ == "__main__":
     driver = get_driver() # Abre browser
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
     loads_cookies(driver, COOKIE_FILE_PATH)
     print("Enviando comentario...")
-    send_comment(driver,20,5)
+    send_comment(driver,15,3)
     driver.quit()        
     

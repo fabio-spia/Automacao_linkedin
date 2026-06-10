@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from config import get_driver
-from bot_linkedin import gerar_resposta, extrair_dado
+from bot_linkedin import gerar_resposta, extrair_dado, debugging
 import requests
 from cookies import loads_cookies
 
@@ -44,6 +44,8 @@ def send_webhook(nome,url_profile,url_webhook):
         print(response.text)
     except requests.exceptions.RequestException as e:
         print("Erro ao enviar webhook:", e)
+        debugging(e)
+
 
 def humanized_writing(field, text):
     for char in text:
@@ -73,6 +75,9 @@ def respond_chat(driver):
         chat.send_keys(Keys.HOME)
         chat.send_keys(Keys.HOME)
         time.sleep(random.randint(3, 10))
+        if driver.find_elements(By.XPATH,"//div[contains(@class, 'msg-spinmail-thread-presenter__top-banner')]//p[normalize-space()='Em destaque']"):
+           print("Anuncio, pulando...")
+           continue 
         header = driver.find_element(By.CSS_SELECTOR, "div.artdeco-entity-lockup__content")
         nome = extrair_dado("Nome da pessoa com o chat aberto")
         titulo = header.find_element(By.CSS_SELECTOR, "div.artdeco-entity-lockup__subtitle div").text.strip()
@@ -110,7 +115,7 @@ def respond_chat(driver):
             if resposta[0] == "1":
                 print(nome.split()[0]+" é um perfil interessante. Enviando notificação...")
                 send_webhook(nome,url,url_webhook)
-                resposta = resposta[2:]
+                resposta = resposta[1:]
             print("Escrevendo resposta...") 
             box = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'div.msg-form__contenteditable[contenteditable="true"][role="textbox"]')))
             humanized_writing(box,resposta)

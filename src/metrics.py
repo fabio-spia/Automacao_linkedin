@@ -51,3 +51,4 @@ if __name__ == "__main__":
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
     loads_cookies(driver, COOKIE_FILE_PATH)
     extract_metrics(driver)
+    driver.quit()

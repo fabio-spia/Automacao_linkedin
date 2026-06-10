@@ -2,14 +2,13 @@
 import csv
 import random
 import time
-import json
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from config import get_driver 
 import unicodedata
-from bot_linkedin import extrair_dado
+from bot_linkedin import extrair_dado, debugging
 from send_messages import send_message
 from conection_sheet import adicionar_registro
 from cookies import loads_cookies
@@ -24,14 +23,13 @@ def accept_invites(driver):
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     time.sleep(random.randint(5, 10))
 
-    # Acessar o CSV
+    # Acessar o CSV,b
     with open(CSV_FILE, "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
 
         while True: 
             # 🔹 Encontrar botões "Aceitar"
             accept_buttons = driver.find_elements(By.XPATH, "//button[.//span[text()='Aceitar']]")
-
             if not accept_buttons:
                 print("✅ Todos os convites foram aceitos!")
                 break
@@ -72,6 +70,7 @@ def accept_invites(driver):
                        
                 except Exception as e:
                     print(f"⚠ Erro ao aceitar convite: {e}")
+                    debugging(str(e))
 
             driver.refresh()
             time.sleep(random.randint(5, 10))

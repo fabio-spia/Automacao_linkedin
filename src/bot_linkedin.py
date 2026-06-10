@@ -122,13 +122,22 @@ def extrair_dado(informacao):
     time.sleep(5)
     print_tela = pyautogui.screenshot()
     print_tela.save("assets/print_tela.png")
-    prompt_extrair_dado = "Voce vai receber um print da tela, retorne o dado que for pedido na mensagem. Apenas o dado. Se naõ encontrar retorne null"
+    prompt_extrair_dado = "Voce vai receber um print da tela, retorne o dado que for pedido na mensagem. Apenas o dado. Se não encontrar retorne apenas null, e nada mais. "
     resposta = gerar_resposta(informacao, prompt_extrair_dado,"assets/print_tela.png") 
     if resposta and resposta.strip().lower() == "null":
+        print("Dado nao encontrado")
         return False
     else:
         return resposta
-    
+
+#Função para analisar bugs
+def debugging(bug):
+    prompt = "Você vai receber o log de um bug, analise e retorne possiveis problemas e possiveis soluçoes. " \
+    "Sua resposta deve ter no maximo 300 palavras. Seja objetivo e direto. Responda em portugues"
+    print("\n\n\n--------------------------\nAnalise do bug:\n")
+    resposta = gerar_resposta(bug,prompt)
+    print(resposta)
+    print("--------------------------\n\n\n")
 
 # Execução
 if __name__ == "__main__":
@@ -142,6 +151,5 @@ if __name__ == "__main__":
         if user_input.lower() == 'sair':
             break
         #resposta = gerar_resposta(user_input,"responda oque for perguntado sobre a imagem","assets/print_tela.png")
-        resposta = extrair_dado(user_input)
-        print("\nResposta:\n", resposta)
-        print("-" * 50)
+        resposta = debugging(user_input)
+        
