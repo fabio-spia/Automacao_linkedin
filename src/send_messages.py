@@ -31,7 +31,11 @@ def send_message(driver):
     WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     time.sleep(random.randint(2, 5))
     name = extrair_dado("Nome do perfil aberto")
-    first_name = name.split()[0]
+    if name != False:
+        first_name = name.split()[0]
+    else:
+        first_name = ' '
+        
     regiao_chat = (0, 300, 700, 600)  # (x, y, largura, altura)
 
     # 🔹 Tenta encontrar o botão "Enviar mensagem" 

@@ -122,7 +122,7 @@ def extrair_dado(informacao):
     time.sleep(5)
     print_tela = pyautogui.screenshot()
     print_tela.save("assets/print_tela.png")
-    prompt_extrair_dado = "Voce vai receber um print da tela, retorne o dado que for pedido na mensagem. Apenas o dado. Se não encontrar retorne apenas null, e nada mais. "
+    prompt_extrair_dado = "Voce vai receber um print da tela, retorne o dado que for pedido na mensagem. Apenas o dado. Se não encontrar retorne apenas null, e nada mais. E não coloque entre aspas"
     resposta = gerar_resposta(informacao, prompt_extrair_dado,"assets/print_tela.png") 
     if resposta and resposta.strip().lower() == "null":
         print("Dado nao encontrado")

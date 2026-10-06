@@ -186,6 +186,6 @@ if __name__ == "__main__":
     driver.get("https://www.linkedin.com")  # Abre LinkedIn
     loads_cookies(driver, COOKIE_FILE_PATH)
     print("Enviando comentario...")
-    send_comment(driver,15,3)
+    send_comment(driver,20,5)
     driver.quit()        
     

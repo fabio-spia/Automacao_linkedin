@@ -1,5 +1,4 @@
 from accept_invites import accept_invites
-from metrics import extract_metrics
 from config import get_driver
 from send_comment import send_comment
 from cookies import loads_cookies
@@ -17,19 +16,16 @@ accept_invites(driver)
 
 print("\n\n\n\n-------------------------------------------------------------")
 print("\nComentando em posts...\n")
-send_comment(driver,20,5)
+send_comment(driver,10,2)
 
 print("\n\n\n\n-------------------------------------------------------------")
 print("\nRespondendo chat...\n")
 respond_chat(driver)
 
-#print("\n\n\n\n-------------------------------------------------------------")
-#print("\nCriando post...\n")
-#creat_post(driver)
-
 print("\n\n\n\n-------------------------------------------------------------")
-print("\nExtraindo metrics de hoje...\n")
-extract_metrics(driver)
+print("\nCriando post...\n")
+creat_post(driver)
+
 
 driver.quit()
 
